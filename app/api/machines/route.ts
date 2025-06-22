@@ -26,7 +26,7 @@ export async function GET(request:any) {
     // Transform machines data to exclude sensitive information (passwords)
     // and add any additional computed fields
     const machines = user.machines.map(machine => ({
-      id: machine.id,
+      id: machine.password,
       name: machine.name || `Machine ${machine.id}`, // Default name if not set
       status: machine.status || 'offline', // Default status if not set
       addedAt: machine.addedAt || machine._id.getTimestamp(), // Use creation time if addedAt not available

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect,useContext } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
+import { MyContext } from '../providers';
 
 interface Machine {
   id: string;
@@ -15,6 +16,7 @@ interface Machine {
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+   const { value, setValue } = useContext(MyContext);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isMachinesMenuOpen, setIsMachinesMenuOpen] = useState(false);
   const [isAddMachineModalOpen, setIsAddMachineModalOpen] = useState(false);
@@ -27,10 +29,18 @@ const Navbar = () => {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
-
+  const [navLinks,setNavLinks] = useState([
+    { name: 'Home', href: '/' },
+    
+    { name: 'Status Alerts', href: '/status' },
+    { name: 'About Us', href: '/about' },
+  ])
   // Fetch user profile data including custom profile image
   useEffect(() => {
     if (isAuthenticated) {
+      setNavLinks((prev)=>([
+        ...prev,{ name: 'Real-time Data', href: '/realtime-data' },
+      ]))
       const fetchUserProfile = async () => {
         try {
           const response = await fetch('/api/user/profile');
@@ -61,6 +71,16 @@ const Navbar = () => {
           if (response.ok) {
             const data = await response.json();
             setMachines(data.machines || []);
+            console.log(data.machines)
+            if(data.machines && data.machines.length > 0) {
+              console.log("SSSSSSSSSSSSSSSSSSSSSSSSS")
+              setValue({
+                name:data.machines[0].name,
+                ip:data.machines[0].id
+              })
+              console.log(value)
+
+            }
           }
         } catch (error) {
           console.error('Error fetching machines:', error);
@@ -72,14 +92,15 @@ const Navbar = () => {
   }, [isAuthenticated]);
 
   // Navigation links
-  const navLinks = [
-    { name: 'Home', href: '/' },
-    { name: 'Real-time Data', href: '/realtime-data' },
-    { name: 'Status Alerts', href: '/status' },
-    { name: 'About Us', href: '/about' },
-    // { name: 'Contact', href: '/contact' },
-    // { name: 'Terms of Service', href: '/terms' },
-  ];
+  
+  function handleMacineClick(machine:any) {
+    // console.log(machine)
+    setValue({
+      ip:machine.id,
+      name:machine.name
+
+    })
+  }
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -320,11 +341,12 @@ const Navbar = () => {
                           </div>
                         ) : (
                           machines.map((machine) => (
-                            <div key={machine.id} className="px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
-                              <div className="flex items-center justify-between">
+                            <div key={machine.id}  className="px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
+                              <button onClick={()=>handleMacineClick(machine)} className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                   <div className={`w-3 h-3 rounded-full ${getStatusColor(machine.status || 'offline')}`}></div>
                                   <div>
+
                                     <p className="font-medium text-gray-900">{machine.name || `Machine ${machine.id}`}</p>
                                     <p className="text-xs text-gray-500">ID: {machine.id}</p>
                                   </div>
@@ -336,7 +358,7 @@ const Navbar = () => {
                                 }`}>
                                   {machine.status || 'offline'}
                                 </span>
-                              </div>
+                              </button>
                             </div>
                           ))
                         )}
@@ -664,30 +686,37 @@ const Navbar = () => {
               <div className="space-y-4">
                 <div>
                   <label htmlFor="machineId" className="block text-sm font-medium text-gray-700 mb-2">
-                    Machine ID
+                    Machine name
                   </label>
                   <input
+                  style={{
+                    color:"black"
+                  }}
                     type="text"
                     id="machineId"
                     value={machineId}
                     onChange={(e) => setMachineId(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter machine ID"
+                    placeholder="Enter machine name"
                     required
                   />
                 </div>
                 
                 <div>
                   <label htmlFor="machinePassword" className="block text-sm font-medium text-gray-700 mb-2">
-                    Machine Password
+                    Machine ip
                   </label>
                   <input
-                    type="password"
+
+                  style={{
+                    color:"black"
+                  }}
+                    type="text"
                     id="machinePassword"
                     value={machinePassword}
                     onChange={(e) => setMachinePassword(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter machine password"
+                    placeholder="Enter machine ip"
                     required
                   />
                 </div>

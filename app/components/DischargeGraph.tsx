@@ -1,20 +1,7 @@
+"use client";
+
 import { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import * as Chart from "chart.js";
-
-// Register Chart.js components
-// Register Chart.js components
-Chart.Chart.register(
-  Chart.CategoryScale,
-  Chart.LinearScale,
-  Chart.PointElement,
-  Chart.LineElement,
-  Chart.LineController,
-  Chart.Title,
-  Chart.Tooltip,
-  Chart.Legend,
-  Chart.Filler
-);
 
 interface DischargeGraphProps {
   data: {
@@ -24,310 +11,318 @@ interface DischargeGraphProps {
 }
 
 const DischargeGraph = ({ data }: DischargeGraphProps) => {
-  const chartRef = useRef<HTMLCanvasElement>(null);
-  const chartInstance = useRef<Chart.Chart | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const canvas = chartRef.current;
+    const canvas = canvasRef.current;
     if (!canvas) return;
-
-    // Destroy existing chart if it exists
-    if (chartInstance.current) {
-      chartInstance.current.destroy();
-    }
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Set canvas dimensions
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    
+    // Chart margins
+    const margin = {
+      top: 40,
+      right: 30,
+      bottom: 60,
+      left: 70,
+    };
+    
+    // Calculate chart dimensions
+    const chartWidth = canvas.width - margin.left - margin.right;
+    const chartHeight = canvas.height - margin.top - margin.bottom;
+    
     // Sort data by date
     const sortedData = [...data].sort((a, b) => 
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
-
+    
+    // Find the max discharge for scaling
+    const maxDischarge = Math.max(...sortedData.map(d => d.discharge)) * 1.1;
+    
     // Format dates for display
     const formatDate = (dateStr: string) => {
       const date = new Date(dateStr);
-      return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+      return `${date.getDate()}/${date.getMonth() + 1}`;
     };
+    
+    // Draw background
+    ctx.fillStyle = "#ffffff"; // White background
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Title
+    ctx.fillStyle = "#94a3b8"; // Slate-400 - even softer color
+    ctx.font = "bold 16px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Discharge Over Time", canvas.width / 2, 25);
+    
+    // Draw axes
+    ctx.strokeStyle = "#cbd5e1"; // Slate-300 - softer color
+    ctx.lineWidth = 1.5;
+    
+    // Y-axis
+    ctx.beginPath();
+    ctx.moveTo(margin.left, margin.top);
+    ctx.lineTo(margin.left, margin.top + chartHeight);
+    ctx.stroke();
+    
+    // X-axis
+    ctx.beginPath();
+    ctx.moveTo(margin.left, margin.top + chartHeight);
+    ctx.lineTo(margin.left + chartWidth, margin.top + chartHeight);
+    ctx.stroke();
+    
+    // Draw grid lines
+    ctx.strokeStyle = "#f1f5f9"; // Slate-100 - even softer grid lines
+    ctx.lineWidth = 1;
+    
+    // Horizontal grid lines (discharge)
+    const dischargeStep = Math.ceil(maxDischarge / 5);
+    for (let i = 0; i <= maxDischarge; i += dischargeStep) {
+      const y = margin.top + chartHeight - (i / maxDischarge) * chartHeight;
+      
+      ctx.beginPath();
+      ctx.moveTo(margin.left - 5, y);
+      ctx.lineTo(margin.left + chartWidth, y);
+      ctx.stroke();
+      
+      // Y-axis labels
+      ctx.fillStyle = "#94a3b8"; // Slate-400 - softer color
+      ctx.font = "12px Arial";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${i} m³/s`, margin.left - 10, y);
+    }
+    
+    // Format dates on x-axis
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#94a3b8"; // Slate-400 - softer color
+    ctx.font = "12px Arial";
 
-    // Calculate average for color coding
+    for (let i = 0; i < 5; i++) {
+      const x = margin.left + (i / 4) * chartWidth;
+      const tickIndex = Math.floor((i / 4) * (sortedData.length - 1));
+      const tickDate = sortedData[tickIndex].date;
+      ctx.fillText(formatDate(tickDate), x, margin.top + chartHeight + 10);
+    }
+    
+    // Axis labels
+    ctx.fillStyle = "#94a3b8"; // Slate-400 - softer color
+    ctx.font = "bold 14px Arial";
+    
+    // Y-axis label
+    ctx.save();
+    ctx.translate(20, margin.top + chartHeight / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.fillText("Discharge (m³/s)", 0, 0);
+    ctx.restore();
+    
+    // X-axis label
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("Date", margin.left + chartWidth / 2, canvas.height - 15);
+    
+    // Calculate the average discharge
     const avgDischarge = sortedData.reduce((sum, item) => sum + item.discharge, 0) / sortedData.length;
-
-    // Create gradient for the line
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.8'); // Indigo
-    gradient.addColorStop(0.5, 'rgba(59, 130, 246, 0.6)'); // Blue
-    gradient.addColorStop(1, 'rgba(147, 51, 234, 0.4)'); // Purple
-
-    // Create area gradient
-    const areaGradient = ctx.createLinearGradient(0, 0, 0, 400);
-    areaGradient.addColorStop(0, 'rgba(99, 102, 241, 0.3)');
-    areaGradient.addColorStop(0.5, 'rgba(59, 130, 246, 0.2)');
-    areaGradient.addColorStop(1, 'rgba(147, 51, 234, 0.1)');
-
-    // Point colors based on discharge value
-    const pointColors = sortedData.map(point => {
-      if (point.discharge > avgDischarge * 1.2) {
-        return '#ef4444'; // Red for high
-      } else if (point.discharge < avgDischarge * 0.8) {
-        return '#3b82f6'; // Blue for low
-      } else {
-        return '#10b981'; // Green for normal
-      }
-    });
-
-    const pointHoverColors = sortedData.map(point => {
-      if (point.discharge > avgDischarge * 1.2) {
-        return '#dc2626'; // Darker red
-      } else if (point.discharge < avgDischarge * 0.8) {
-        return '#2563eb'; // Darker blue
-      } else {
-        return '#059669'; // Darker green
-      }
-    });
-
-    chartInstance.current = new Chart.Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: sortedData.map(d => formatDate(d.date)),
-        datasets: [{
-          label: 'Discharge',
-          data: sortedData.map(d => d.discharge),
-          borderColor: gradient,
-          backgroundColor: areaGradient,
-          borderWidth: 3,
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: pointColors,
-          pointBorderColor: '#ffffff',
-          pointHoverBackgroundColor: pointHoverColors,
-          pointBorderWidth: 2,
-          pointHoverBorderWidth: 3,
-          pointRadius: 6,
-          pointHoverRadius: 8,
-          shadowOffsetX: 2,
-          shadowOffsetY: 2,
-          shadowBlur: 4,
-          shadowColor: 'rgba(0, 0, 0, 0.1)'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-          intersect: false,
-          mode: 'index'
-        },
-        plugins: {
-          title: {
-            display: true,
-            text: 'Water Discharge Over Time',
-            font: {
-              size: 18,
-              weight: 'bold',
-              family: "'Inter', sans-serif"
-            },
-            color: '#1f2937',
-            padding: {
-              top: 10,
-              bottom: 20
-            }
-          },
-          legend: {
-            display: false
-          },
-          tooltip: {
-            enabled: true,
-            backgroundColor: 'rgba(17, 24, 39, 0.95)',
-            titleColor: '#f9fafb',
-            bodyColor: '#f9fafb',
-            borderColor: '#374151',
-            borderWidth: 1,
-            cornerRadius: 8,
-            displayColors: false,
-            titleFont: {
-              size: 14,
-              weight: 'bold'
-            },
-            bodyFont: {
-              size: 13
-            },
-            padding: 12,
-            callbacks: {
-              title: function(context) {
-                return `Date: ${context[0].label}`;
-              },
-              label: function(context) {
-                const value = context.parsed.y;
-                const status = value > avgDischarge * 1.2 ? ' (High)' :
-                              value < avgDischarge * 0.8 ? ' (Low)' : ' (Normal)';
-                return `Discharge: ${value.toFixed(2)} m³/s${status}`;
-              },
-              afterLabel: function(context) {
-                const value = context.parsed.y;
-                const percentage = ((value - avgDischarge) / avgDischarge * 100).toFixed(1);
-                return `Deviation: ${percentage > 0 ? '+' : ''}${percentage}% from avg`;
-              }
-            }
-          }
-        },
-        scales: {
-          x: {
-            display: true,
-            title: {
-              display: true,
-              text: 'Date',
-              font: {
-                size: 14,
-                weight: 'bold'
-              },
-              color: '#374151'
-            },
-            grid: {
-              color: 'rgba(156, 163, 175, 0.2)',
-              lineWidth: 1
-            },
-            ticks: {
-              color: '#6b7280',
-              font: {
-                size: 12
-              },
-              maxTicksLimit: 8
-            }
-          },
-          y: {
-            display: true,
-            title: {
-              display: true,
-              text: 'Discharge (m³/s)',
-              font: {
-                size: 14,
-                weight: 'bold'
-              },
-              color: '#374151'
-            },
-            grid: {
-              color: 'rgba(156, 163, 175, 0.2)',
-              lineWidth: 1
-            },
-            ticks: {
-              color: '#6b7280',
-              font: {
-                size: 12
-              },
-              callback: function(value) {
-                return value.toFixed(1) + ' m³/s';
-              }
-            },
-            beginAtZero: true
-          }
-        },
-        elements: {
-          point: {
-            hoverBorderWidth: 3
-          }
-        },
-        animation: {
-          duration: 2000,
-          easing: 'easeInOutQuart'
+    
+    // Draw data area
+    if (sortedData.length > 1) {
+      // Create gradient for area
+      const gradient = ctx.createLinearGradient(
+        0, 
+        margin.top, 
+        0, 
+        margin.top + chartHeight
+      );
+      gradient.addColorStop(0, "rgba(224, 242, 254, 0.7)"); // Sky-100 with opacity - softer color
+      gradient.addColorStop(1, "rgba(248, 250, 252, 0.1)"); // Slate-50
+      
+      // Draw filled area
+      ctx.beginPath();
+      
+      // Start at the bottom left
+      ctx.moveTo(margin.left, margin.top + chartHeight);
+      
+      // Draw points along the line
+      sortedData.forEach((point, index) => {
+        const x = margin.left + (index / (sortedData.length - 1)) * chartWidth;
+        const y = margin.top + chartHeight - (point.discharge / maxDischarge) * chartHeight;
+        ctx.lineTo(x, y);
+      });
+      
+      // Close the path to the bottom right
+      ctx.lineTo(margin.left + chartWidth, margin.top + chartHeight);
+      ctx.closePath();
+      
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    }
+    
+    // Draw data line
+    if (sortedData.length > 1) {
+      // Create gradient for line
+      const lineGradient = ctx.createLinearGradient(
+        margin.left, 
+        0, 
+        margin.left + chartWidth, 
+        0
+      );
+      lineGradient.addColorStop(0, "#bae6fd"); // Sky-200 - softer color
+      lineGradient.addColorStop(0.5, "#93c5fd"); // Blue-300 - softer color
+      lineGradient.addColorStop(1, "#c4b5fd"); // Violet-300 - softer color
+      
+      ctx.beginPath();
+      sortedData.forEach((point, index) => {
+        const x = margin.left + (index / (sortedData.length - 1)) * chartWidth;
+        const y = margin.top + chartHeight - (point.discharge / maxDischarge) * chartHeight;
+        
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
         }
+      });
+      
+      ctx.strokeStyle = lineGradient;
+      ctx.lineWidth = 3;
+      ctx.lineJoin = "round";
+      ctx.stroke();
+    }
+    
+    // Draw data points
+    sortedData.forEach((point, index) => {
+      const x = margin.left + (index / (Math.max(1, sortedData.length - 1))) * chartWidth;
+      const y = margin.top + chartHeight - (point.discharge / maxDischarge) * chartHeight;
+      
+      // Determine color based on relation to average
+      let pointColor;
+      if (point.discharge > avgDischarge * 1.2) {
+        pointColor = "#93c5fd"; // Blue-300 - softer color
+      } else if (point.discharge < avgDischarge * 0.8) {
+        pointColor = "#ddd6fe"; // Violet-200 - softer color
+      } else {
+        pointColor = "#bae6fd"; // Sky-200 - softer color
+      }
+      
+      // Draw shadow
+      ctx.shadowColor = "rgba(0, 0, 0, 0.05)";
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
+      
+      // Draw point
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = pointColor;
+      ctx.fill();
+      
+      // Draw point border
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Reset shadow
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      
+      // Draw tooltip on hover or for significant points
+      const isSignificant = 
+        point.discharge === Math.max(...sortedData.map(d => d.discharge)) || 
+        point.discharge === Math.min(...sortedData.map(d => d.discharge));
+      
+      if (isSignificant) {
+        const tooltipText = `${point.discharge.toFixed(2)} m³/s`;
+        const tooltipWidth = ctx.measureText(tooltipText).width + 16;
+        const tooltipHeight = 24;
+        const tooltipRadius = 4;
+        
+        // Position tooltip above point
+        const tooltipX = x - tooltipWidth / 2;
+        const tooltipY = y - tooltipHeight - 8;
+        
+        // Draw tooltip background
+        ctx.fillStyle = "#f8fafc"; // Slate-50 - softer color
+        ctx.beginPath();
+        ctx.moveTo(tooltipX + tooltipRadius, tooltipY);
+        ctx.lineTo(tooltipX + tooltipWidth - tooltipRadius, tooltipY);
+        ctx.quadraticCurveTo(tooltipX + tooltipWidth, tooltipY, tooltipX + tooltipWidth, tooltipY + tooltipRadius);
+        ctx.lineTo(tooltipX + tooltipWidth, tooltipY + tooltipHeight - tooltipRadius);
+        ctx.quadraticCurveTo(tooltipX + tooltipWidth, tooltipY + tooltipHeight, tooltipX + tooltipWidth - tooltipRadius, tooltipY + tooltipHeight);
+        
+        // Draw the pointer
+        ctx.lineTo(x + 6, tooltipY + tooltipHeight);
+        ctx.lineTo(x, y - 6);
+        ctx.lineTo(x - 6, tooltipY + tooltipHeight);
+        
+        ctx.lineTo(tooltipX + tooltipRadius, tooltipY + tooltipHeight);
+        ctx.quadraticCurveTo(tooltipX, tooltipY + tooltipHeight, tooltipX, tooltipY + tooltipHeight - tooltipRadius);
+        ctx.lineTo(tooltipX, tooltipY + tooltipRadius);
+        ctx.quadraticCurveTo(tooltipX, tooltipY, tooltipX + tooltipRadius, tooltipY);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.strokeStyle = "#e2e8f0"; // Slate-200 - softer color
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        
+        // Draw tooltip text
+        ctx.fillStyle = "#94a3b8"; // Slate-400 - softer color
+        ctx.font = "bold 12px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(tooltipText, x, tooltipY + tooltipHeight / 2);
       }
     });
-
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy();
-      }
-    };
+    
+    // Calculate trend
+    if (sortedData.length > 2) {
+      // Calculate simple trend (first vs last point)
+      const firstDischarge = sortedData[0].discharge;
+      const lastDischarge = sortedData[sortedData.length - 1].discharge;
+      const dischargeDifference = ((lastDischarge - firstDischarge) / firstDischarge) * 100;
+      
+      const trendText = dischargeDifference > 0 
+        ? `↗ Increasing (${dischargeDifference.toFixed(1)}%)`
+        : dischargeDifference < 0
+        ? `↘ Decreasing (${Math.abs(dischargeDifference).toFixed(1)}%)`
+        : "→ Stable (0%)";
+      
+      const trendColor = dischargeDifference > 0 
+        ? "#6ee7b7" // Emerald-300 - softer color
+        : dischargeDifference < 0
+        ? "#fca5a5" // Red-300 - softer color
+        : "#cbd5e1"; // Slate-300 - softer color
+      
+      // Position at bottom right of chart
+      const trendY = margin.top + chartHeight - 10;
+      
+      ctx.fillStyle = trendColor;
+      ctx.font = "bold 12px Arial";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      ctx.fillText(trendText, margin.left + chartWidth - 10, trendY);
+    }
+    
   }, [data]);
-
-  // Calculate trend for display
-  const calculateTrend = () => {
-    if (data.length < 2) return null;
-    
-    const sortedData = [...data].sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-    
-    const firstDischarge = sortedData[0].discharge;
-    const lastDischarge = sortedData[sortedData.length - 1].discharge;
-    const difference = ((lastDischarge - firstDischarge) / firstDischarge) * 100;
-    
-    return {
-      percentage: difference.toFixed(1),
-      direction: difference > 5 ? 'increasing' : difference < -5 ? 'decreasing' : 'stable',
-      icon: difference > 5 ? '📈' : difference < -5 ? '📉' : '➡️',
-      color: difference > 5 ? 'text-green-600' : difference < -5 ? 'text-red-600' : 'text-blue-600'
-    };
-  };
-
-  const trend = calculateTrend();
-  const avgDischarge = data.reduce((sum, item) => sum + item.discharge, 0) / data.length;
-  const maxDischarge = Math.max(...data.map(d => d.discharge));
-  const minDischarge = Math.min(...data.map(d => d.discharge));
 
   return (
     <motion.div 
-      className="relative w-full bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl overflow-hidden shadow-xl border border-slate-200"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="relative w-full h-72 md:h-96 bg-white rounded-lg overflow-hidden shadow-lg border border-gray-100"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5 }}
     >
-      {/* Header with stats */}
-      <div className="p-6 bg-gradient-to-r from-blue-600 to-cyan-500 text-white">
-        <div className="flex flex-wrap justify-between items-center gap-4">
-          <div className="flex flex-wrap gap-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{avgDischarge.toFixed(1)}</div>
-              <div className="text-sm opacity-90">Avg m³/s</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-200">{maxDischarge.toFixed(1)}</div>
-              <div className="text-sm opacity-90">Max m³/s</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-200">{minDischarge.toFixed(1)}</div>
-              <div className="text-sm opacity-90">Min m³/s</div>
-            </div>
-          </div>
-          
-          {trend && (
-            <div className="text-center bg-white/10 rounded-lg px-4 py-2 backdrop-blur-sm">
-              <div className="text-lg font-semibold">
-                {trend.icon} {trend.direction.charAt(0).toUpperCase() + trend.direction.slice(1)}
-              </div>
-              <div className="text-sm opacity-90">{Math.abs(parseFloat(trend.percentage))}%</div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Chart container */}
-      <div className="p-6">
-        <div className="relative h-72 md:h-96">
-          <canvas ref={chartRef} className="w-full h-full" />
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div className="px-6 pb-6">
-        <div className="flex flex-wrap justify-center gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-            <span className="text-gray-600">High Discharge (&gt;120% avg)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span className="text-gray-600">Normal Discharge (80-120% avg)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-            <span className="text-gray-600">Low Discharge (&lt;80% avg)</span>
-          </div>
-        </div>
-      </div>
+      <canvas ref={canvasRef} className="w-full h-full" />
     </motion.div>
   );
 };
 
-export default DischargeGraph;
+export default DischargeGraph; 

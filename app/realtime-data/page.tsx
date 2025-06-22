@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect,useContext } from 'react';
 import { motion } from 'framer-motion';
 import RiverVisualization from '../components/RiverVisualization';
 import VelocityChart from '../components/VelocityChart';
@@ -21,6 +21,8 @@ import DischargeBarChart from '../components/DischargeBarChart';
 import DischargeGraph from '../components/DischargeGraph';
 import StatCard from '../components/StatCard';
 import WaterLevelIndicator from '../components/WaterLevelIndicator';
+import { MyContext } from '../providers';
+import MediaViewer from '../components/DisplayImageAndVideos';
 
 // Mock data based on the provided images
 const riverData = {
@@ -66,7 +68,7 @@ export default function RealtimeDataPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dischargeHistory, setDischargeHistory] = useState(timeSeriesData);
-
+  const {value,setValue} = useContext(MyContext)
   // Format time consistently for both server and client
   const formatTime = (date: Date) => {
     const hours = date.getHours().toString().padStart(2, '0');
@@ -182,6 +184,18 @@ export default function RealtimeDataPage() {
               Real-Time River Data
             </motion.h1>
             
+
+            <motion.h1 
+              className="text font-bold tracking-tight text-blue-500 sm:text-4xl"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              {
+                value.name
+              }
+            </motion.h1>
+
             <motion.div 
               className="flex items-center mt-4 sm:mt-0"
               initial={{ opacity: 0, y: -20 }}
@@ -360,6 +374,16 @@ export default function RealtimeDataPage() {
             </div>
           </div>
         </div>
+
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+          <h2 className="text-xl font-semibold mb-4 text-slate-700">Discharge Over Time</h2>
+          <MediaViewer />
+          <div className="mt-4 text-sm text-slate-500">
+            Historical and real-time image and video viewer
+          </div>
+        </div>
+        
+
         
         {/* Data summary and export options */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-100">
