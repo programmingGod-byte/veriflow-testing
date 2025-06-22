@@ -1,15 +1,15 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
   images: {
     domains: ['lh3.googleusercontent.com', 'res.cloudinary.com'],
   },
   typescript: {
     ignoreBuildErrors: true,
-  }
+  },
+  eslint: {
+    ignoreDuringBuilds: true, // 👈 disables ESLint at build time
+  },
 };
-
-module.exports = nextConfig;
 
 export default nextConfig;

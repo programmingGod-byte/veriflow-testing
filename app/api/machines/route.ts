@@ -43,7 +43,7 @@ export async function GET(request:any) {
       message: machines.length === 0 ? 'No machines found' : `Found ${machines.length} machine(s)`
     });
 
-  } catch (error) {
+  } catch (error:any) {
     console.error('Error fetching machines:', error);
     
     // Handle specific MongoDB errors
