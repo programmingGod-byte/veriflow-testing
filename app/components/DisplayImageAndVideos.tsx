@@ -64,17 +64,14 @@ const {value,setValue} = useContext(MyContext)
 
 
   useEffect(() => {
-    console.log("VVVVVVVVVVVVVVVV")
-    console.log(value)
     if(value.ip.length>0){
-        setBaseUrl(`http://${value.ip}:5000`)
+        console.log("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+        console.log(value.ip)
+        setBaseUrl(`https://${value.ip}:5000`)
         fetchLatestMedia("image")
   
     }
-        
-    return () => {
-      
-    }
+     
   }, [value])
   
 

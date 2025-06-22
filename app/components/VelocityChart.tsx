@@ -40,7 +40,7 @@ const VelocityChart = ({ flowDirection: propFlowDirection }: VelocityChartProps)
         }
         setLoading(true);
         console.log(value)
-        const response = await fetch(`http://${value.ip}:5000/river_section_velocities.csv`);
+        const response = await fetch(`https://${value.ip}:5000/river_section_velocities.csv`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
