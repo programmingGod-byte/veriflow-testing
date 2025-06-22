@@ -1,0 +1,44 @@
+{
+  "name": "visiflow",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.3.0",
+    "@react-three/fiber": "^9.1.2",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.2",
+    "cloudinary": "^2.6.0",
+    "dotenv": "^16.5.0",
+    "framer-motion": "^11.18.2",
+    "gsap": "^3.12.2",
+    "lucide-react": "^0.522.0",
+    "mongoose": "^8.13.2",
+    "next": "15.3.1",
+    "next-auth": "^4.24.11",
+    "next-cloudinary": "^6.16.0",
+    "postcss": "^8.5.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-parallax-tilt": "^1.7.291",
+    "recharts": "^2.15.4",
+    "three": "^0.177.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4.1.4",
+    "@types/bcrypt": "^5.0.2",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.1",
+    "tailwindcss": "^4.1.4",
+    "typescript": "^5"
+  }
+}
