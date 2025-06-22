@@ -1,7 +1,6 @@
-"use client";
-
-import { useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import React, { useRef, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import * as Chart from 'chart.js';
 
 interface DischargeContributionPieChartProps {
   data: {
@@ -12,302 +11,352 @@ interface DischargeContributionPieChartProps {
   totalDischarge: number;
 }
 
-// Define interface for label positions
-interface LabelPosition {
-  id: number;
-  percentage: number;
-  angle: number;
-  significant: boolean;
-  startAngle: number;
-  endAngle: number;
-}
-
 const DischargeContributionPieChart = ({ 
   data, 
   totalDischarge 
 }: DischargeContributionPieChartProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  
-  // Generate a color based on section number - using softer pastel colors
-  const getSectionColor = (section: number) => {
-    const colors = [
-      'rgba(252, 165, 165, 0.8)',   // Section 1 - Soft Red (red-300)
-      'rgba(147, 197, 253, 0.8)',   // Section 2 - Soft Blue (blue-300)
-      'rgba(253, 224, 71, 0.8)',    // Section 3 - Soft Yellow (yellow-300)
-      'rgba(94, 234, 212, 0.8)',    // Section 4 - Soft Teal (teal-300)
-      'rgba(196, 181, 253, 0.8)',   // Section 5 - Soft Purple (purple-300)
-      'rgba(216, 180, 254, 0.8)',   // Section 6 - Soft Violet (violet-300)
-      'rgba(103, 232, 249, 0.8)',   // Section 7 - Soft Cyan (cyan-300)
-      'rgba(253, 186, 116, 0.8)',   // Section 8 - Soft Orange (orange-300)
-      'rgba(251, 191, 36, 0.8)',    // Section 9 - Soft Amber (amber-400)
-      'rgba(134, 239, 172, 0.8)'    // Section 10 - Soft Green (green-300)
-    ];
-    
-    // Section numbers are 1-based, array indices are 0-based
-    return colors[(section - 1) % colors.length];
-  };
+  const chartRef = useRef<HTMLCanvasElement>(null);
+  const chartInstance = useRef<Chart.Chart | null>(null);
+  const [hoveredSection, setHoveredSection] = useState<number | null>(null);
+
+  // Modern gradient color palette
+  const getModernColors = () => [
+    {
+      bg: 'rgba(99, 102, 241, 0.8)',      // Indigo
+      border: 'rgb(99, 102, 241)',
+      hover: 'rgba(99, 102, 241, 0.9)'
+    },
+    {
+      bg: 'rgba(236, 72, 153, 0.8)',      // Pink
+      border: 'rgb(236, 72, 153)',
+      hover: 'rgba(236, 72, 153, 0.9)'
+    },
+    {
+      bg: 'rgba(14, 165, 233, 0.8)',      // Sky blue
+      border: 'rgb(14, 165, 233)',
+      hover: 'rgba(14, 165, 233, 0.9)'
+    },
+    {
+      bg: 'rgba(34, 197, 94, 0.8)',       // Emerald
+      border: 'rgb(34, 197, 94)',
+      hover: 'rgba(34, 197, 94, 0.9)'
+    },
+    {
+      bg: 'rgba(251, 146, 60, 0.8)',      // Orange
+      border: 'rgb(251, 146, 60)',
+      hover: 'rgba(251, 146, 60, 0.9)'
+    },
+    {
+      bg: 'rgba(168, 85, 247, 0.8)',      // Purple
+      border: 'rgb(168, 85, 247)',
+      hover: 'rgba(168, 85, 247, 0.9)'
+    },
+    {
+      bg: 'rgba(6, 182, 212, 0.8)',       // Cyan
+      border: 'rgb(6, 182, 212)',
+      hover: 'rgba(6, 182, 212, 0.9)'
+    },
+    {
+      bg: 'rgba(245, 158, 11, 0.8)',      // Amber
+      border: 'rgb(245, 158, 11)',
+      hover: 'rgba(245, 158, 11, 0.9)'
+    },
+    {
+      bg: 'rgba(239, 68, 68, 0.8)',       // Red
+      border: 'rgb(239, 68, 68)',
+      hover: 'rgba(239, 68, 68, 0.9)'
+    },
+    {
+      bg: 'rgba(16, 185, 129, 0.8)',      // Teal
+      border: 'rgb(16, 185, 129)',
+      hover: 'rgba(16, 185, 129, 0.9)'
+    }
+  ];
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    // Return early if data is empty
-    if (!data || data.length === 0) return;
-    
-    // Filter out invalid data points
-    const validData = data.filter(d => 
-      typeof d.discharge === 'number' && isFinite(d.discharge) && !isNaN(d.discharge) &&
-      typeof d.percentage === 'number' && isFinite(d.percentage) && !isNaN(d.percentage)
+    // Register Chart.js components
+    Chart.Chart.register(
+      Chart.ArcElement,
+      Chart.Tooltip,
+      Chart.Legend,
+      Chart.DoughnutController,
+      Chart.CategoryScale
     );
-    
-    // Return if no valid data remains
-    if (validData.length === 0) return;
-    
-    // Set canvas dimensions
-    const setCanvasDimensions = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
-    };
-    
-    // Initial setup
-    setCanvasDimensions();
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // White background
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Calculate center point and radius
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const radius = Math.min(centerX, centerY) * 0.55; // Reduced radius to leave space for labels
-    
-    // Sort data by discharge (descending) to make pie chart more readable
-    const sortedData = [...validData].sort((a, b) => b.discharge - a.discharge);
-    
-    // Draw title with nice style
-    ctx.fillStyle = '#60a5fa'; // Soft blue color (blue-400)
-    ctx.font = 'bold 18px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('Discharge Contribution by Section', centerX, 30);
-    
-    // Add total info
-    ctx.font = '14px Arial';
-    ctx.fillStyle = '#3b82f6'; // Soft blue color (blue-500)
-    ctx.fillText(`Total: ${totalDischarge.toFixed(2)} m³/s`, centerX, 55);
-    
-    // Draw pie chart
-    let startAngle = -Math.PI / 2; // Start from the top
-    
-    // Calculate total percentage (in case it doesn't add up to 100%)
-    const totalPercentage = sortedData.reduce((sum, item) => sum + item.percentage, 0);
-    
-    // Store label information for organizing them
-    const labelPositions: LabelPosition[] = [];
-    
-    // First pass - draw the pie slices
-    sortedData.forEach(d => {
-      const sectionId = d.id;
-      // Normalize percentage if total isn't 100%
-      const normalizedPercentage = totalPercentage > 0 ? (d.percentage / totalPercentage) * 100 : 0;
-      const sliceAngle = (normalizedPercentage / 100) * 2 * Math.PI;
-      
-      // Draw slice
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY);
-      ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
-      ctx.closePath();
-      
-      // Fill with color
-      ctx.fillStyle = getSectionColor(sectionId);
-      ctx.fill();
-      
-      // Draw slice border
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      
-      // Calculate midpoint angle for label
-      const midAngle = startAngle + sliceAngle / 2;
-      
-      // Store label information
-      labelPositions.push({
-        id: sectionId,
-        percentage: d.percentage,
-        angle: midAngle,
-        significant: d.percentage >= 5, // Consider sections with >5% significant
-        startAngle: startAngle,
-        endAngle: startAngle + sliceAngle
-      });
-      
-      startAngle += sliceAngle;
-    });
-    
-    // Draw a white circle in the center (donut hole)
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius * 0.45, 0, Math.PI * 2);
-    ctx.fillStyle = 'white';
-    ctx.fill();
-    ctx.strokeStyle = '#f1f5f9'; // slate-100 - softer border
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    
-    // Add sections count in the center
-    ctx.fillStyle = '#60a5fa'; // blue-400 - soft blue
-    ctx.font = 'bold 16px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(sortedData.length.toString(), centerX, centerY - 5);
-    
-    ctx.font = '12px Arial';
-    ctx.fillText('Sections', centerX, centerY + 12);
-    
-    // Organize labels to prevent overlap
-    const significantLabels = labelPositions.filter(label => label.significant);
-    const insignificantLabels = labelPositions.filter(label => !label.significant);
-    
-    // Draw labels for significant sections
-    significantLabels.forEach(label => {
-      const midAngle = label.angle;
-      
-      // Calculate label position
-      const labelDistance = radius * 1.3; // Distance from center
-      const labelX = centerX + Math.cos(midAngle) * labelDistance;
-      const labelY = centerY + Math.sin(midAngle) * labelDistance;
-      
-      // Draw line from pie to label
-      const pieX = centerX + Math.cos(midAngle) * radius;
-      const pieY = centerY + Math.sin(midAngle) * radius;
-      
-      ctx.beginPath();
-      ctx.moveTo(pieX, pieY);
-      ctx.lineTo(labelX, labelY);
-      ctx.strokeStyle = getSectionColor(label.id);
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      
-      // Create label box
-      const labelText = `Section ${label.id}`;
-      const percentText = `${label.percentage.toFixed(1)}%`;
-      const boxWidth = 80;
-      const boxHeight = 35;
-      const boxRadius = 5;
-      
-      // Determine text anchor point based on angle
-      const isRightSide = Math.cos(midAngle) > 0;
-      const isBottomHalf = Math.sin(midAngle) > 0;
-      
-      let boxX, boxY;
-      
-      if (isRightSide) {
-        boxX = labelX;
-      } else {
-        boxX = labelX - boxWidth;
-      }
-      
-      boxY = labelY - boxHeight / 2;
-      
-      // Draw label box with rounded corners
-      ctx.fillStyle = 'white';
-      ctx.beginPath();
-      ctx.roundRect(boxX, boxY, boxWidth, boxHeight, boxRadius);
-      ctx.fill();
-      
-      // Draw border
-      ctx.strokeStyle = getSectionColor(label.id);
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      
-      // Add text
-      ctx.fillStyle = '#64748b'; // slate-500 - softer text
-      ctx.font = '11px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(labelText, boxX + boxWidth / 2, boxY + boxHeight * 0.35);
-      
-      ctx.font = 'bold 11px Arial';
-      ctx.fillText(percentText, boxX + boxWidth / 2, boxY + boxHeight * 0.7);
-    });
-    
-    // Draw legend for smaller sections
-    if (insignificantLabels.length > 0) {
-      const legendX = 5;
-      const legendY = canvas.height - 30 - (insignificantLabels.length * 15);
-      const legendWidth = 140;
-      const legendHeight = (insignificantLabels.length * 15) + 25;
-      
-      // Draw legend background
-      ctx.fillStyle = 'white';
-      ctx.beginPath();
-      ctx.rect(legendX, legendY, legendWidth, legendHeight);
-      ctx.fill();
-      ctx.strokeStyle = '#e2e8f0'; // slate-200 - softer border
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      
-      // Add legend title
-      ctx.fillStyle = '#64748b'; // slate-500 - softer text
-      ctx.font = 'bold 12px Arial';
-      ctx.textAlign = 'left';
-      ctx.fillText('Small Sections', legendX + 10, legendY + 15);
-      
-      // Draw legend items
-      insignificantLabels.forEach((label, index) => {
-        const itemY = legendY + 30 + (index * 15);
-        
-        // Draw color box
-        ctx.fillStyle = getSectionColor(label.id);
-        ctx.fillRect(legendX + 10, itemY - 8, 10, 10);
-        
-        // Draw label text
-        ctx.fillStyle = '#64748b'; // slate-500 - softer text
-        ctx.font = '11px Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText(
-          `Section ${label.id} (${label.percentage.toFixed(1)}%)`,
-          legendX + 25,
-          itemY
-        );
-      });
+
+    const canvas = chartRef.current;
+    if (!canvas || !data || data.length === 0) return;
+
+    // Destroy existing chart
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
     }
-    
-    // Set up resize handler
-    const handleResize = () => {
-      setCanvasDimensions();
-      
-      // Redraw everything when canvas size changes
-      // In a real application, you would want to debounce this
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // ... (Redraw code - this is why we use useEffect)
+
+    // Sort data by discharge (descending)
+    const sortedData = [...data].sort((a, b) => b.discharge - a.discharge);
+    const colors = getModernColors();
+
+    // Prepare data for Chart.js
+    const chartData = {
+      labels: sortedData.map(d => `Section ${d.id}`),
+      datasets: [{
+        data: sortedData.map(d => d.percentage),
+        backgroundColor: sortedData.map((_, index) => colors[index % colors.length].bg),
+        borderColor: sortedData.map((_, index) => colors[index % colors.length].border),
+        hoverBackgroundColor: sortedData.map((_, index) => colors[index % colors.length].hover),
+        borderWidth: 3,
+        hoverBorderWidth: 4,
+        hoverOffset: 15, // This creates the "bulge" effect
+        spacing: 2
+      }]
     };
-    
-    // Add resize listener
-    window.addEventListener('resize', handleResize);
-    
-    // Cleanup
+
+    // Create the chart
+    chartInstance.current = new Chart.Chart(canvas, {
+      type: 'doughnut',
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            align: 'center',
+            labels: {
+              usePointStyle: true,
+              pointStyle: 'circle',
+              padding: 20,
+              font: {
+                size: 12,
+                family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
+              },
+              color: '#475569',
+              generateLabels: (chart) => {
+                const data = chart.data;
+                if (data.labels && data.datasets.length) {
+                  return data.labels.map((label, i) => {
+                    const dataset = data.datasets[0];
+                    const value = dataset.data[i] as number;
+                    const discharge = sortedData[i].discharge;
+                    return {
+                      text: `${label}: ${value.toFixed(1)}% (${discharge.toFixed(2)} m³/s)`,
+                      fillStyle: dataset.backgroundColor[i],
+                      strokeStyle: dataset.borderColor[i],
+                      lineWidth: dataset.borderWidth,
+                      hidden: false,
+                      index: i
+                    };
+                  });
+                }
+                return [];
+              }
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            titleColor: '#1e293b',
+            bodyColor: '#475569',
+            borderColor: '#e2e8f0',
+            borderWidth: 1,
+            cornerRadius: 12,
+            displayColors: true,
+            padding: 16,
+            titleFont: {
+              size: 14,
+              weight: 'bold',
+              family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
+            },
+            bodyFont: {
+              size: 13,
+              family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
+            },
+            callbacks: {
+              title: (context) => {
+                const index = context[0].dataIndex;
+                return `Section ${sortedData[index].id}`;
+              },
+              label: (context) => {
+                const index = context.dataIndex;
+                const percentage = context.parsed;
+                const discharge = sortedData[index].discharge;
+                return [
+                  `Percentage: ${percentage.toFixed(2)}%`,
+                  `Discharge: ${discharge.toFixed(2)} m³/s`,
+                  `Contribution: ${((discharge / totalDischarge) * 100).toFixed(2)}%`
+                ];
+              }
+            }
+          }
+        },
+        cutout: '60%',
+        radius: '90%',
+        animation: {
+          animateScale: true,
+          animateRotate: true,
+          duration: 1000,
+          easing: 'easeOutQuart'
+        },
+        onHover: (event, elements) => {
+          if (elements.length > 0) {
+            setHoveredSection(elements[0].index);
+            canvas.style.cursor = 'pointer';
+          } else {
+            setHoveredSection(null);
+            canvas.style.cursor = 'default';
+          }
+        },
+        interaction: {
+          intersect: false,
+          mode: 'point'
+        }
+      }
+    });
+
     return () => {
-      window.removeEventListener('resize', handleResize);
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+      }
     };
   }, [data, totalDischarge]);
-  
+
+  const validData = data?.filter(d => 
+    typeof d.discharge === 'number' && isFinite(d.discharge) && !isNaN(d.discharge)
+  ) || [];
+
+  if (validData.length === 0) {
+    return (
+      <motion.div 
+        className="flex items-center justify-center h-96 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border border-slate-200"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-slate-200 rounded-full flex items-center justify-center">
+            <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <p className="text-slate-600 font-medium">No discharge data available</p>
+          <p className="text-slate-400 text-sm mt-1">Please provide valid discharge data to view the chart</p>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div 
-      className="relative w-full h-96 bg-white rounded-lg overflow-hidden shadow-sm border border-slate-100"
+      className="relative w-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.1 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
     >
-      <canvas 
-        ref={canvasRef} 
-        className="w-full h-full" 
-      />
+      {/* Header */}
+      <motion.div 
+        className="px-6 py-4 bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-slate-200"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <h2 className="text-xl font-bold text-slate-800 mb-1">
+          Discharge Contribution by Section
+        </h2>
+        <div className="flex items-center gap-4 text-sm text-slate-600">
+          <span className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+            Total Discharge: <span className="font-semibold text-indigo-600">{totalDischarge.toFixed(2)} m³/s</span>
+          </span>
+          <span className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+            Sections: <span className="font-semibold text-emerald-600">{validData.length}</span>
+          </span>
+        </div>
+      </motion.div>
+
+      {/* Chart Container */}
+      <motion.div 
+        className="relative h-96 p-6"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.7, delay: 0.3, ease: "easeOut" }}
+      >
+        <canvas ref={chartRef} className="w-full h-full" />
+        
+        {/* Center Info */}
+        <motion.div 
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.8 }}
+        >
+          <div className="text-center bg-white rounded-full p-4 shadow-sm border border-slate-100">
+            <div className="text-2xl font-bold text-slate-800">
+              {validData.length}
+            </div>
+            <div className="text-xs text-slate-500 font-medium">
+              SECTIONS
+            </div>
+            {hoveredSection !== null && (
+              <motion.div 
+                className="mt-2 p-2 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-200"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="text-sm font-semibold text-indigo-700">
+                  Section {validData.sort((a, b) => b.discharge - a.discharge)[hoveredSection]?.id}
+                </div>
+                <div className="text-xs text-indigo-600">
+                  {validData.sort((a, b) => b.discharge - a.discharge)[hoveredSection]?.percentage.toFixed(1)}%
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Stats Footer */}
+      <motion.div 
+        className="px-6 py-3 bg-slate-50 border-t border-slate-200"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+      >
+        <div className="flex justify-between items-center text-xs text-slate-500">
+          <span>Hover over sections for detailed information</span>
+          <span className="flex items-center gap-1">
+            <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
+            Interactive Chart
+          </span>
+        </div>
+      </motion.div>
     </motion.div>
   );
 };
 
-export default DischargeContributionPieChart; 
+// Demo component with sample data
+const DemoChart = () => {
+  const sampleData = [
+    { id: 1, discharge: 45.67, percentage: 25.3 },
+    { id: 2, discharge: 38.21, percentage: 21.2 },
+    { id: 3, discharge: 29.45, percentage: 16.3 },
+    { id: 4, discharge: 22.18, percentage: 12.3 },
+    { id: 5, discharge: 18.92, percentage: 10.5 },
+    { id: 6, discharge: 12.34, percentage: 6.8 },
+    { id: 7, discharge: 8.76, percentage: 4.9 },
+    { id: 8, discharge: 5.23, percentage: 2.9 }
+  ];
+  
+  const totalDischarge = sampleData.reduce((sum, item) => sum + item.discharge, 0);
+
+  return (
+    <div className="p-8 bg-gradient-to-br from-slate-100 to-slate-200 min-h-screen">
+      <div className="max-w-6xl mx-auto">
+        <DischargeContributionPieChart 
+          data={sampleData} 
+          totalDischarge={totalDischarge} 
+        />
+      </div>
+    </div>
+  );
+};
+
+export default DemoChart;
