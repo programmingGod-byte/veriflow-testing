@@ -1,5 +1,21 @@
 import mongoose from 'mongoose';
 
+
+const machineSchema = new mongoose.Schema({
+  id:{
+    type:String,
+    required:true
+  },
+  password:{
+    type:String,
+    required:true
+  },
+  status:{
+    type:String,
+    default:"online"
+  }
+})
+
 const UserSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -56,6 +72,11 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  machines: {
+  type: [machineSchema],
+  default: []
+}
+
 });
 
 export default mongoose.models.User || mongoose.model('User', UserSchema); 
