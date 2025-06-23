@@ -67,7 +67,7 @@ const {value,setValue} = useContext(MyContext)
     if(value.ip.length>0){
         console.log("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
         console.log(value.ip)
-        setBaseUrl(`https://${value.ip}:5000`)
+        setBaseUrl(`http://${value.ip}:5000`)
         fetchLatestMedia("image")
   
     }

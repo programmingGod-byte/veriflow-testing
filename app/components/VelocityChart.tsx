@@ -38,15 +38,18 @@ const VelocityChart = ({ flowDirection: propFlowDirection }: VelocityChartProps)
         if(!value.ip){
           return 
         }
-        setLoading(true);
-        console.log(value)
-        const response = await fetch(`https://${value.ip}:5000/river_section_velocities.csv`);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const csvText = await response.text();
+          setLoading(true);
+          console.log(value)
+          const response = await fetch(`/api/csv?ip=${value.ip}`);
+
+if (!response.ok) {
+  throw new Error(`HTTP error! status: ${response.status}`);
+}
+
+const csvText = await response.text();
+console.log(csvText);
+
+          console.log(csvText)
         const lines = csvText.trim().split('\n');
         // console.log(lines)
         const parsedData: VelocityData[] = lines.map(line => {

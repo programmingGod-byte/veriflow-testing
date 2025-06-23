@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+//  ssh -i "visiflow.pem" ec2-user@ec2-13.203.226.108.ap-south-1.compute.amazonaws.com
+
 
 const Footer = () => {
   return (
