@@ -56,9 +56,9 @@ console.log(csvText);
           const parts = line.trim().split(','); // Split by comma
           return {
             section: parseInt(parts[0]),
-            velocity: parseFloat(parts[1]),
-            depth: parseFloat(parts[2]),
-            width: parseFloat(parts[3]),
+            velocity: parseFloat(parts[2]),
+            depth: parseFloat(parts[3]),
+            
             flowDirection: parseFloat(parts[4]),
             timestamp: parts[5].trim() // Timestamp is already complete in column 6
           };
