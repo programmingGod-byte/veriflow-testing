@@ -2,7 +2,7 @@
 
 import { useState, useEffect ,useContext} from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, RefreshCw, TrendingDown } from 'lucide-react';
+import { Calendar, Clock, RefreshCw, TrendingDown, AlertCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { MyContext } from '../providers';
 
@@ -28,6 +28,7 @@ const RiverDepthVisualization = ({ serverIp = "13.203.226.108" }: RiverDepthVisu
   const [depthData, setDepthData] = useState<DepthData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [ip, setIp] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
@@ -59,15 +60,43 @@ useEffect(() => {
     return times;
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setError(null);
+    
+    // Reset selections
+    setSelectedTimestamp(null);
+    setDepthData(null);
+    setSelectedDate('');
+    setSelectedTime('');
+    setAvailableTimes([]);
+    
+    await fetchTimestamps();
+    setRefreshing(false);
+  };
+
   const fetchTimestamps = async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await fetch(`/api/depth/timestamp?ip=${encodeURIComponent(ip)}`);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch timestamps');
+        if (response.status === 404) {
+          throw new Error('Data file does not exist on the server');
+        } else if (response.status >= 500) {
+          throw new Error('Server is not responding. Please try again later');
+        } else {
+          throw new Error(`Server error: ${response.status} - ${response.statusText}`);
+        }
       }
+      
       const data = await response.json();
+      
+      if (!data || data.length === 0) {
+        throw new Error('No timestamp data available');
+      }
+      
       setTimestamps(data);
       
       if (data.length > 0) {
@@ -79,7 +108,12 @@ useEffect(() => {
         await fetchDepthData(latest);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch timestamps');
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError('Could not connect to server. Please check your connection and try again');
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not fetch data from server');
+      }
+      console.error('Fetch timestamps error:', err);
     } finally {
       setLoading(false);
     }
@@ -90,13 +124,31 @@ useEffect(() => {
       const response = await fetch(
         `/api/depth/getdata?ip=${encodeURIComponent(ip)}&date=${encodeURIComponent(timestamp.date)}&time=${encodeURIComponent(timestamp.time)}`
       );
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch depth data');
+        if (response.status === 404) {
+          throw new Error('Depth data file does not exist for the selected timestamp');
+        } else if (response.status >= 500) {
+          throw new Error('Server is not responding. Please try again later');
+        } else {
+          throw new Error(`Server error: ${response.status} - ${response.statusText}`);
+        }
       }
+      
       const data = await response.json();
+      
+      if (!data || !data.values || data.values.length === 0) {
+        throw new Error('No depth data available for the selected timestamp');
+      }
+      
       setDepthData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch depth data');
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError('Could not connect to server. Please check your connection and try again');
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not fetch depth data from server');
+      }
+      console.error('Fetch depth data error:', err);
     }
   };
 
@@ -184,19 +236,29 @@ useEffect(() => {
       {/* Controls */}
       <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
         <div className="flex flex-wrap gap-4 items-center justify-between">
-          
-          {selectedTimestamp && (
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                <span>{selectedTimestamp.date}</span>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleRefresh}
+              disabled={loading || refreshing}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${(refreshing || loading) ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh Data'}
+            </button>
+            
+            {selectedTimestamp && (
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  <span>{selectedTimestamp.date}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  <span>{selectedTimestamp.time}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                <span>{selectedTimestamp.time}</span>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {timestamps.length > 0 && (
@@ -238,9 +300,24 @@ useEffect(() => {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          <strong>Error:</strong> {error}
-        </div>
+        <motion.div 
+          className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg flex items-start gap-3"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <strong className="font-medium">Error:</strong>
+            <p className="mt-1">{error}</p>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="mt-2 text-sm underline hover:no-underline disabled:opacity-50"
+            >
+              Try again
+            </button>
+          </div>
+        </motion.div>
       )}
 
       {/* Statistics Cards */}
@@ -321,8 +398,6 @@ useEffect(() => {
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Section Depth Distribution</h3>
             
             <div className="flex gap-6">
-              {/* Legend on left side of chart */}
-              
               {/* Chart */}
               <div className="flex-1">
                 <ResponsiveContainer width="100%" height={400}>
@@ -452,10 +527,31 @@ useEffect(() => {
         </div>
       )}
 
-      {!loading && !error && chartData.length === 0 && (
+      {!loading && !error && timestamps.length === 0 && (
         <div className="text-center py-12 text-gray-500">
           <TrendingDown className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-          <p>No depth data available. Please check your server connection and try again.</p>
+          <p className="mb-4">No data available from server.</p>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {refreshing ? 'Trying...' : 'Try Again'}
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && timestamps.length > 0 && chartData.length === 0 && selectedTimestamp && (
+        <div className="text-center py-12 text-gray-500">
+          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+          <p className="mb-4">No depth data available for the selected timestamp.</p>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {refreshing ? 'Refreshing...' : 'Refresh Data'}
+          </button>
         </div>
       )}
     </div>

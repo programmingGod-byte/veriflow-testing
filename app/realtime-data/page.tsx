@@ -378,7 +378,6 @@
           </div>
 
           <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
-            <h2 className="text-xl font-semibold mb-4 text-slate-700">Discharge Over Time</h2>
             <MediaViewer />
             <div className="mt-4 text-sm text-slate-500">
               Historical and real-time image and video viewer
