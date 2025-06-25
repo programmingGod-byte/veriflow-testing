@@ -16,7 +16,7 @@ interface Machine {
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-   const { value, setValue } = useContext(MyContext);
+   const { value, setValue ,user,setUser} = useContext(MyContext);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isMachinesMenuOpen, setIsMachinesMenuOpen] = useState(false);
   const [isAddMachineModalOpen, setIsAddMachineModalOpen] = useState(false);
@@ -46,6 +46,13 @@ const Navbar = () => {
           const response = await fetch('/api/user/profile');
           if (response.ok) {
             const data = await response.json();
+            console.log(data)
+            setUser(data.user);
+            if(data.user.email=="verigeektech@gmail.com" || data.user.email=="omdaga6@gmail.com"){
+              setNavLinks((prev)=>([
+                ...prev,{ name: 'See contact', href: '/checkcontact' },
+              ]))
+            }
             if (data.user?.profileImage) {
               setUserProfileImage(data.user.profileImage);
             }

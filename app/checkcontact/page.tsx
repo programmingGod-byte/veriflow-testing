@@ -1,6 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect,useContext } from 'react';
+import { MyContext } from '../providers';
+
+
 // Simple SVG icons as components
 const ChevronDownIcon = ({ className }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -41,12 +44,24 @@ const BookmarkIcon = ({ className, filled = false }) => (
 const ContactsList = () => {
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
+    const { value, setValue ,user,setUser} = useContext(MyContext);
+ 
   const [expandedContact, setExpandedContact] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [bookmarkedContacts, setBookmarkedContacts] = useState(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
 
   // Fetch contacts from API
+
+  useEffect(() => {
+    if (user.email=="verigeektech@gmail.com" || user.email=="omdaga6@gmail.com") {
+      // User is authenticated, proceed with fetching contacts
+      // Redirect to login or handle unauthenticated state
+      
+    }else{
+        window.location.href = '/';
+    }
+  }, [user]);
   const fetchContacts = async () => {
     try {
       const response = await fetch('/api/contact');

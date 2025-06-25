@@ -12,10 +12,11 @@ export function Providers({ children }) {
     name:"",
     ip:"",
   });
+  const [user,setUser] = useState([])
 
   return (
     <SessionProvider>
-      <MyContext.Provider value={{ value, setValue }}>
+      <MyContext.Provider value={{ value, setValue ,user,setUser }}>
         {children}
       </MyContext.Provider>
     </SessionProvider>
