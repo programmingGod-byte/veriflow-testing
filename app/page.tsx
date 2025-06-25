@@ -72,7 +72,7 @@ export default function Home() {
             animate="visible"
             variants={staggerContainer}
           >
-            <motion.div variants={fadeIn} className="text-center md:text-left">
+          <motion.div variants={fadeIn} className="text-center md:text-left">
               <motion.h1 
                 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent"
                 initial={{ opacity: 0, x: -20 }}
@@ -98,12 +98,23 @@ export default function Home() {
                 transition={{ duration: 0.6, delay: 0.6 }}
               >
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Link 
+                  {
+                    isAuthenticated ? (
+                      <Link 
                     href="/realtime-data" 
                     className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-medium transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 shadow-lg inline-block"
                   >
                     View Live Data
                   </Link>
+                    ):(
+                      <Link 
+                    href="/auth" 
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-medium transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 shadow-lg inline-block"
+                  >
+                    Sign In to View Data
+                  </Link>
+                    )
+                  }
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Link 
@@ -528,7 +539,7 @@ export default function Home() {
               </motion.div>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link 
-                  href="/signup" 
+                  href="/auth?tab=signup" 
                   className="bg-blue-800 hover:bg-blue-900 text-white px-8 py-3 rounded-full font-medium transition-all duration-300 inline-block border border-white/30"
                 >
                   Create Account

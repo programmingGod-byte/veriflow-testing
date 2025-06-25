@@ -4,6 +4,100 @@ import { useState, useEffect, useContext } from 'react';
 import { Play, Image, Calendar, Clock, Download, ChevronDown, Filter, X, Search, Grid, List, Eye, FileImage, Video } from 'lucide-react';
 import { MyContext } from '../providers';
 
+// Video Player Component with Error Handling
+const VideoPlayer = ({ src, name, className, onError }) => {
+  const [videoError, setVideoError] = useState(false);
+  
+  const handleVideoError = (e) => {
+    console.error('Video error:', e);
+    console.error('Video src:', src);
+    setVideoError(true);
+    if (onError) onError(e);
+  };
+  
+  if (videoError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Video size={24} className="text-red-600" />
+        </div>
+        <p className="text-red-600 font-medium mb-2">Unable to play video format</p>
+        <p className="text-red-500 text-sm mb-4">The video format may not be supported by your browser</p>
+        <a 
+          href={src} 
+          download={name}
+          className="inline-flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+        >
+          <Download size={16} />
+          <span>Download to play locally</span>
+        </a>
+      </div>
+    );
+  }
+  
+  return (
+    <video
+      src={src}
+      controls
+      preload="metadata"
+      className={className}
+      style={{ maxHeight: '500px' }}
+      onError={handleVideoError}
+      onLoadStart={() => setVideoError(false)}
+      crossOrigin="anonymous"
+    >
+      <source src={src} type="video/mp4" />
+      <source src={src} type="video/webm" />
+      <source src={src} type="video/ogg" />
+      <source src={src} type="video/avi" />
+      <source src={src} type="video/mov" />
+      Your browser does not support the video tag.
+    </video>
+  );
+};
+
+// Debug Info Component
+const MediaDebugInfo = ({ media, showDebug = false }) => {
+  if (!media || !showDebug) return null;
+  
+  const testBlob = () => {
+    if (media.url.startsWith('blob:')) {
+      fetch(media.url)
+        .then(response => {
+          console.log('Blob fetch response:', response);
+          console.log('Content-Type:', response.headers.get('content-type'));
+          console.log('Content-Length:', response.headers.get('content-length'));
+          return response.blob();
+        })
+        .then(blob => {
+          console.log('Blob details:', {
+            size: blob.size,
+            type: blob.type
+          });
+        })
+        .catch(err => console.error('Blob fetch error:', err));
+    }
+  };
+  
+  return (
+    <div className="bg-gray-100 p-3 rounded mt-2 text-xs">
+      <p><strong>Name:</strong> {media.name}</p>
+      <p><strong>Type:</strong> {media.type}</p>
+      <p><strong>MIME Type:</strong> {media.mimeType || 'Not set'}</p>
+      <p><strong>URL Type:</strong> {media.url.startsWith('blob:') ? 'Blob URL' : 'Direct URL'}</p>
+      <p><strong>URL:</strong> {media.url.substring(0, 80)}...</p>
+      {media.url.startsWith('blob:') && (
+        <button 
+          onClick={testBlob}
+          className="bg-blue-500 text-white px-2 py-1 rounded text-xs mt-1 hover:bg-blue-600"
+        >
+          Test Blob
+        </button>
+      )}
+    </div>
+  );
+};
+
 export default function MediaViewer() {
   const [activeTab, setActiveTab] = useState('image');
   const [activeOption, setActiveOption] = useState('latest');
@@ -14,6 +108,7 @@ export default function MediaViewer() {
   const [error, setError] = useState(null);
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
+  const [showDebug, setShowDebug] = useState(false);
   
   // Filter states
   const [availableDates, setAvailableDates] = useState([]);
@@ -23,9 +118,31 @@ export default function MediaViewer() {
   const [showDateDropdown, setShowDateDropdown] = useState(false);
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
-  const [filtersApplied, setFiltersApplied] = useState(false); // New state to track if filters are applied
+  const [filtersApplied, setFiltersApplied] = useState(false);
   const [BASE_URL, setBaseUrl] = useState("");
   const {value, setValue} = useContext(MyContext);
+
+  // Helper function to determine MIME type from filename
+  const getMimeType = (filename) => {
+    const ext = filename.toLowerCase().split('.').pop();
+    const mimeTypes = {
+      'mp4': 'video/mp4',
+      'webm': 'video/webm',
+      'avi': 'video/x-msvideo',
+      'mov': 'video/quicktime',
+      'wmv': 'video/x-ms-wmv',
+      'mkv': 'video/x-matroska',
+      '3gp': 'video/3gpp',
+      'flv': 'video/x-flv',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif',
+      'bmp': 'image/bmp',
+      'webp': 'image/webp'
+    };
+    return mimeTypes[ext] || 'application/octet-stream';
+  };
 
   // Extract unique dates and times from media list
   const extractDatesTimes = (mediaData) => {
@@ -76,8 +193,7 @@ export default function MediaViewer() {
 
   useEffect(() => {
     if(value.ip.length > 0){
-      console.log("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
-      console.log(value.ip);
+      console.log("Setting base URL with IP:", value.ip);
       setBaseUrl(`http://${value.ip}:5000`);
       fetchLatestMedia("image");
     }
@@ -92,7 +208,7 @@ export default function MediaViewer() {
     setFiltersApplied(false);
   };
 
-  // Fetch latest media
+  // Enhanced fetch latest media with proper MIME type handling
   const fetchLatestMedia = async (type) => {
     setLoading(true);
     setError(null);
@@ -104,7 +220,7 @@ export default function MediaViewer() {
       }
 
       const data = await res.json();
-      console.log(data.name);
+      console.log("Latest media name:", data.name);
       const mediaName = data.name;
       
       const mediaEndpoint = type === 'image' ? 'image' : 'video';
@@ -112,15 +228,32 @@ export default function MediaViewer() {
 
       if (!mediaResponse.ok) throw new Error('Failed to fetch media file');
       
+      // Get content type from response headers
+      const contentType = mediaResponse.headers.get('content-type');
+      console.log("Response content-type:", contentType);
+      
       const mediaBlob = await mediaResponse.blob();
-      const mediaUrl = URL.createObjectURL(mediaBlob);
+      console.log("Original blob type:", mediaBlob.type);
+      
+      // Determine the correct MIME type
+      let finalMimeType = contentType || mediaBlob.type || getMimeType(mediaName);
+      
+      // Create a properly typed blob
+      const typedBlob = new Blob([mediaBlob], { type: finalMimeType });
+      console.log("Final blob type:", typedBlob.type);
+      
+      const mediaUrl = URL.createObjectURL(typedBlob);
       
       setLatestMedia({
         name: mediaName,
         url: mediaUrl,
-        type: type
+        type: type,
+        mimeType: finalMimeType,
+        originalContentType: contentType,
+        blobSize: typedBlob.size
       });
     } catch (err) {
+      console.error("Error fetching latest media:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -142,34 +275,73 @@ export default function MediaViewer() {
       setMediaList(sortedData);
       extractDatesTimes(sortedData);
     } catch (err) {
+      console.error("Error fetching media list:", err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch specific media file
+  // Enhanced fetch specific media file with proper MIME type handling
   const fetchMediaFile = async (name, type) => {
     setLoading(true);
+    setError(null);
     try {
       const endpoint = type === 'image' ? 'image' : 'video';
       
-      const response = await fetch(`/api/media?ip=${value.ip}&type=${type}&name=${name}`);
+      const response = await fetch(`/api/media?ip=${value.ip}&type=${endpoint}&name=${name}`);
 
       if (!response.ok) throw new Error('Failed to fetch media file');
 
+      // Get content type from response headers
+      const contentType = response.headers.get('content-type');
+      console.log("Response content-type for", name, ":", contentType);
+      
       const mediaBlob = await response.blob();
-      const mediaUrl = URL.createObjectURL(mediaBlob);
+      console.log("Original blob type:", mediaBlob.type);
+      
+      // Determine the correct MIME type
+      let finalMimeType = contentType || mediaBlob.type || getMimeType(name);
+      
+      // Create a properly typed blob
+      const typedBlob = new Blob([mediaBlob], { type: finalMimeType });
+      console.log("Final blob type:", typedBlob.type);
+      
+      const mediaUrl = URL.createObjectURL(typedBlob);
       
       setSelectedMedia({
         name: name,
         url: mediaUrl,
-        type: type
+        type: type,
+        mimeType: finalMimeType,
+        originalContentType: contentType,
+        blobSize: typedBlob.size
       });
     } catch (err) {
+      console.error("Error fetching media file:", err);
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Alternative: Direct URL approach (fallback)
+  const fetchMediaFileDirect = async (name, type) => {
+    try {
+      // Use direct API URL instead of blob
+      const endpoint = type === 'image' ? 'image' : 'video';
+      const directUrl = `/api/media?ip=${value.ip}&type=${endpoint}&name=${encodeURIComponent(name)}`;
+      
+      setSelectedMedia({
+        name: name,
+        url: directUrl,
+        type: type,
+        isDirect: true,
+        mimeType: getMimeType(name)
+      });
+    } catch (err) {
+      console.error("Error with direct URL approach:", err);
+      setError(err.message);
     }
   };
 
@@ -204,8 +376,22 @@ export default function MediaViewer() {
 
   // Initial load
   useEffect(() => {
-    fetchLatestMedia(activeTab);
-  }, [activeTab]);
+    if (value.ip.length > 0) {
+      fetchLatestMedia(activeTab);
+    }
+  }, [activeTab, value.ip]);
+
+  // Cleanup blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (latestMedia?.url?.startsWith('blob:')) {
+        URL.revokeObjectURL(latestMedia.url);
+      }
+      if (selectedMedia?.url?.startsWith('blob:')) {
+        URL.revokeObjectURL(selectedMedia.url);
+      }
+    };
+  }, [latestMedia, selectedMedia]);
 
   const formatTimestamp = (timestamp) => {
     return new Date(timestamp).toLocaleString();
@@ -235,7 +421,13 @@ export default function MediaViewer() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              
+              {/* Debug Toggle */}
+              <button
+                onClick={() => setShowDebug(!showDebug)}
+                className="text-xs bg-gray-200 px-2 py-1 rounded hover:bg-gray-300"
+              >
+                {showDebug ? 'Hide Debug' : 'Show Debug'}
+              </button>
             </div>
             
             {/* Tab Navigation */}
@@ -289,11 +481,11 @@ export default function MediaViewer() {
               onClick={() => handleOptionChange('timestamp')}
               className={`group flex items-center space-x-2 px-6 py-3 rounded-xl border-2 transition-all duration-300 font-medium text-sm ${
                 activeOption === 'timestamp'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white border-transparent shadow-lg shadow-purple-200/50'
+                  ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white border-transparent shadow-lg shadow-purple-200/50'
                   : 'bg-white/80 text-slate-700 border-slate-200 hover:bg-white hover:border-purple-300 hover:shadow-md backdrop-blur-sm'
               }`}
             >
-              <div className={`p-1.5 rounded-lg ${activeOption === 'timestamp' ? 'bg-white/20' : 'bg-gradient-to-r from-purple-600 to-pink-500'}`}>
+              <div className={`p-1.5 rounded-lg ${activeOption === 'timestamp' ? 'bg-white/20' : 'bg-gradient-to-r from-blue-600 to-cyan-500'}`}>
                 <Search size={16} className={activeOption === 'timestamp' ? 'text-white' : 'text-white'} />
               </div>
               <span>Browse by time</span>
@@ -496,23 +688,27 @@ export default function MediaViewer() {
                       style={{ maxHeight: '500px' }}
                     />
                   ) : (
-                    <video
+                    <VideoPlayer
                       src={latestMedia.url}
-                      controls
-                      preload="metadata"
+                      name={latestMedia.name}
                       className="max-w-full h-auto rounded-xl shadow-lg border-2 border-white"
-                      style={{ maxHeight: '500px' }}
-                    >
-                      Your browser does not support the video tag.
-                    </video>
+                      onError={(e) => {
+                        console.error('Video playback failed, trying direct URL approach');
+                        // Fallback to direct URL
+                        const directUrl = `/api/media?ip=${value.ip}&type=video&name=${encodeURIComponent(latestMedia.name)}`;
+                        setLatestMedia(prev => ({ ...prev, url: directUrl, isDirect: true }));
+                      }}
+                    />
                   )}
                 </div>
               </div>
-              <div className="text-center">
+              
+              <MediaDebugInfo media={latestMedia} showDebug={showDebug} />
+              <div className="flex justify-center mt-4">
                 <a
                   href={latestMedia.url}
                   download={latestMedia.name}
-                  className="inline-flex items-center space-x-2 px-6 py-3 text-white rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 font-medium text-sm"
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg hover:from-blue-700 hover:to-cyan-600 transition-all duration-200 shadow-lg shadow-blue-200/50 font-medium text-sm"
                 >
                   <Download size={16} />
                   <span>Download</span>
@@ -523,176 +719,186 @@ export default function MediaViewer() {
         )}
 
         {/* Media List Display */}
-        {activeOption === 'timestamp' && filteredMediaList.length > 0 && !loading && (
+        {activeOption === 'timestamp' && !loading && (
           <div className="space-y-6">
+            {/* View Mode Toggle */}
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-slate-800">
-                  Found {filteredMediaList.length} {filteredMediaList.length === 1 ? 'item' : 'items'}
-                </h3>
-                <p className="text-slate-600 text-sm">Click any item to view it</p>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm font-medium text-slate-700">
+                  {filtersApplied ? filteredMediaList.length : mediaList.length} {activeTab === 'image' ? 'photos' : 'videos'} found
+                </span>
               </div>
               
-              <div className="flex items-center space-x-1 bg-white/80 rounded-lg p-1 backdrop-blur-sm border border-white/30">
+              <div className="flex items-center bg-white/50 rounded-lg p-1 backdrop-blur-sm border border-white/30">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-md transition-all ${
-                    viewMode === 'grid' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+                  className={`p-2 rounded-md transition-all duration-200 ${
+                    viewMode === 'grid'
+                      ? 'bg-white text-blue-600 shadow-md'
+                      : 'text-slate-600 hover:text-slate-800 hover:bg-white/50'
                   }`}
                 >
                   <Grid size={16} />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-md transition-all ${
-                    viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
+                  className={`p-2 rounded-md transition-all duration-200 ${
+                    viewMode === 'list'
+                      ? 'bg-white text-blue-600 shadow-md'
+                      : 'text-slate-600 hover:text-slate-800 hover:bg-white/50'
                   }`}
                 >
                   <List size={16} />
                 </button>
               </div>
             </div>
-            
-            <div className={viewMode === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3' : 'space-y-3'}>
-              {filteredMediaList.map((media, index) => (
-                <div
-                  key={index}
-                  className={`group bg-white/80 backdrop-blur-sm border border-white/30 rounded-xl p-4 hover:shadow-lg transition-all duration-300 cursor-pointer hover:scale-105 hover:bg-white ${
-                    viewMode === 'list' ? 'flex items-center space-x-4' : ''
-                  }`}
-                  onClick={() => fetchMediaFile(media.name, activeTab)}
-                >
-                  <div className={`${viewMode === 'list' ? 'flex-shrink-0' : 'mb-3'}`}>
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl flex items-center justify-center group-hover:from-blue-200 group-hover:to-purple-200 transition-all duration-300">
-                      {activeTab === 'image' ? (
-                        <FileImage size={20} className="text-blue-600" />
-                      ) : (
-                        <Video size={20} className="text-purple-600" />
-                      )}
-                    </div>
+
+            {/* Media Grid/List */}
+            {(filtersApplied ? filteredMediaList : mediaList).length > 0 ? (
+              <div className={viewMode === 'grid' 
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                : 'space-y-4'
+              }>
+                {(filtersApplied ? filteredMediaList : mediaList).map((media, index) => (
+                  <div
+                    key={`${media.name}-${index}`}
+                    className={`bg-white/80 backdrop-blur-lg rounded-xl border border-white/30 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer ${
+                      viewMode === 'list' ? 'flex items-center p-4' : 'p-4'
+                    }`}
+                    onClick={() => fetchMediaFile(media.name, activeTab)}
+                  >
+                    {viewMode === 'grid' ? (
+                      <div className="space-y-3">
+                        <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center relative overflow-hidden">
+                          {activeTab === 'image' ? (
+                            <FileImage className="text-slate-400" size={32} />
+                          ) : (
+                            <Video className="text-slate-400" size={32} />
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                            <Eye className="text-white drop-shadow-lg" size={24} />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-slate-800 text-sm truncate" title={media.name}>
+                            {media.name}
+                          </h4>
+                          <div className="space-y-1">
+                            <div className="flex items-center space-x-2 text-xs text-slate-600">
+                              <Calendar size={12} />
+                              <span>{formatDate(media.timestamp)}</span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-xs text-slate-600">
+                              <Clock size={12} />
+                              <span>{formatTime(media.timestamp)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-4 flex-1">
+                        <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                          {activeTab === 'image' ? (
+                            <FileImage className="text-slate-400" size={20} />
+                          ) : (
+                            <Video className="text-slate-400" size={20} />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-slate-800 text-sm truncate" title={media.name}>
+                            {media.name}
+                          </h4>
+                          <p className="text-xs text-slate-600">
+                            {formatTimestamp(media.timestamp)}
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <Eye className="text-slate-400 group-hover:text-blue-600 transition-colors" size={18} />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  
-                  <div className={`${viewMode === 'list' ? 'flex-grow' : ''}`}>
-                    <h4 className="font-semibold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors line-clamp-1 text-sm" title={media.name}>
-                      {media.name}
-                    </h4>
-                    <div className="space-y-1">
-                      <p className="text-xs text-slate-500 flex items-center space-x-1">
-                        <Calendar size={12} />
-                        <span>{formatDate(media.timestamp)}</span>
-                      </p>
-                      <p className="text-xs text-slate-500 flex items-center space-x-1">
-                        <Clock size={12} />
-                        <span>{formatTime(media.timestamp)}</span>
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {viewMode === 'list' && (
-                    <div className="flex-shrink-0">
-                      <Eye size={18} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
-                    </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  {activeTab === 'image' ? (
+                    <FileImage className="text-slate-400" size={24} />
+                  ) : (
+                    <Video className="text-slate-400" size={24} />
                   )}
                 </div>
-              ))}
-            </div>
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">
+                  No {activeTab === 'image' ? 'photos' : 'videos'} found
+                </h3>
+                <p className="text-slate-500 text-sm">
+                  {filtersApplied 
+                    ? 'Try adjusting your filters to see more results'
+                    : `No ${activeTab === 'image' ? 'photos' : 'videos'} available at this time`
+                  }
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Selected Media Display */}
+        {/* Selected Media Modal */}
         {selectedMedia && (
-          <div className="mt-8 bg-white/80 backdrop-blur-lg rounded-2xl p-6 border border-white/30 shadow-xl">
-            <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-1">
-                {activeTab === 'image' ? 'Photo' : 'Video'} Preview
-              </h3>
-              <p className="text-slate-600 text-sm">Full resolution view</p>
-            </div>
-            
-            <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl p-6 shadow-inner">
-              <div className="mb-4 text-center">
-                <p className="text-xs font-medium text-slate-500 mb-4 bg-slate-100 rounded-full px-3 py-1 inline-block">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl">
+              <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                <h3 className="font-semibold text-slate-800 text-lg truncate flex-1 mr-4">
                   {selectedMedia.name}
-                </p>
+                </h3>
+                <div className="flex items-center space-x-2">
+                  <a
+                    href={selectedMedia.url}
+                    download={selectedMedia.name}
+                    className="inline-flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                  >
+                    <Download size={14} />
+                    <span>Download</span>
+                  </a>
+                  <button
+                    onClick={() => setSelectedMedia(null)}
+                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 overflow-auto max-h-[calc(90vh-120px)]">
                 <div className="flex justify-center">
                   {activeTab === 'image' ? (
                     <img
                       src={selectedMedia.url}
                       alt={selectedMedia.name}
-                      className="max-w-full h-auto rounded-xl shadow-lg border-2 border-white"
-                      style={{ maxHeight: '500px' }}
+                      className="max-w-full h-auto rounded-lg shadow-lg"
+                      style={{ maxHeight: '70vh' }}
                     />
                   ) : (
-                    <video
+                    <VideoPlayer
                       src={selectedMedia.url}
-                      controls
-                      preload="metadata"
-                      className="max-w-full h-auto rounded-xl shadow-lg border-2 border-white"
-                      style={{ maxHeight: '500px' }}
-                    >
-                      Your browser does not support the video tag.
-                    </video>
+                      name={selectedMedia.name}
+                      className="max-w-full h-auto rounded-lg shadow-lg"
+                      onError={(e) => {
+                        console.error('Video playback failed in modal, trying direct URL approach');
+                        // Fallback to direct URL
+                        const directUrl = `/api/media?ip=${value.ip}&type=video&name=${encodeURIComponent(selectedMedia.name)}`;
+                        setSelectedMedia(prev => ({ ...prev, url: directUrl, isDirect: true }));
+                      }}
+                    />
                   )}
                 </div>
-              </div>
-              <div className="text-center">
-                <a
-                  href={selectedMedia.url}
-                  download={selectedMedia.name}
-                  className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 font-medium text-sm"
-                >
-                  <Download size={16} />
-                  <span>Download</span>
-                </a>
+                
+                <MediaDebugInfo media={selectedMedia} showDebug={showDebug} />
               </div>
             </div>
-          </div>
-        )}
-
-
-        {/* Empty States */}
-        {!loading && !error && !latestMedia && !selectedMedia && activeOption === 'timestamp' && showFilters && mediaList.length === 0 && (
-          <div className="text-center py-20">
-            <div className="w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-6">
-              {activeTab === 'image' ? (
-                <FileImage size={48} className="text-slate-400" />
-              ) : (
-                <Video size={48} className="text-slate-400" />
-              )}
-            </div>
-            <h3 className="text-2xl font-bold text-slate-800 mb-2">No {activeTab === 'image' ? 'photos' : 'videos'} found</h3>
-            <p className="text-slate-600">Your collection is empty. Upload some media to get started!</p>
-          </div>
-        )}
-{/* No Filter Results */}
-        {!loading && !error && activeOption === 'timestamp' && !showFilters && mediaList.length > 0 && filteredMediaList.length === 0 && (
-          <div className="text-center py-20">
-            <div className="w-32 h-32 bg-gradient-to-br from-amber-100 to-orange-200 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Search size={48} className="text-amber-600" />
-            </div>
-            <h3 className="text-2xl font-bold text-slate-800 mb-2">No matches found</h3>
-            <p className="text-slate-600 mb-4">
-              No {activeTab === 'image' ? 'photos' : 'videos'} found for the selected date and time.
-            </p>
-            <button
-              onClick={resetFilters}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium"
-            >
-              <X size={18} />
-              <span>Clear Filters</span>
-            </button>
           </div>
         )}
       </div>
     </div>
   );
 }
-
-
-
-
-
-
-
-
-

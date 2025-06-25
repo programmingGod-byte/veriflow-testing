@@ -32,14 +32,14 @@ const Navbar = () => {
   const [navLinks,setNavLinks] = useState([
     { name: 'Home', href: '/' },
     
-    { name: 'Status Alerts', href: '/status' },
+    // { name: 'Status Alerts', href: '/status' },
     { name: 'About Us', href: '/about' },
   ])
   // Fetch user profile data including custom profile image
   useEffect(() => {
     if (isAuthenticated) {
       setNavLinks((prev)=>([
-        ...prev,{ name: 'Real-time Data', href: '/realtime-data' },
+        ...prev,{ name: 'Status Alerts', href: '/status' },{ name: 'Real-time Data', href: '/realtime-data' },
       ]))
       const fetchUserProfile = async () => {
         try {
