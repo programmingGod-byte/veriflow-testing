@@ -105,7 +105,7 @@ const WaterLevelIndicator = ({
           <div className="absolute right-0 top-0 h-full w-12 bg-slate-50 border-l border-slate-200 z-10">
             <div className="absolute top-0 right-0 left-0 flex items-center">
               <div className="h-px w-2 bg-slate-400"></div>
-              <div className="text-[10px] text-slate-600 ml-1">{maxLevel}m</div>
+              <div className="text-[10px] text-slate-600 ml-1">{maxLevel.toPrecision(2)}m</div>
             </div>
 
             <div
@@ -113,7 +113,7 @@ const WaterLevelIndicator = ({
               style={{ top: `${100 - dangerPosition}%` }}
             >
               <div className="h-px w-2 bg-red-400"></div>
-              <div className="text-[10px] text-red-500 ml-1">{dangerLevel}m</div>
+              <div className="text-[10px] text-red-500 ml-1">{dangerLevel.toPrecision(2)}m</div>
             </div>
 
             <div
@@ -121,7 +121,7 @@ const WaterLevelIndicator = ({
               style={{ top: `${100 - warningPosition}%` }}
             >
               <div className="h-px w-2 bg-amber-400"></div>
-              <div className="text-[10px] text-amber-500 ml-1">{warningLevel}m</div>
+              <div className="text-[10px] text-amber-500 ml-1">{warningLevel.toPrecision(2)}m</div>
             </div>
 
             <div
@@ -129,7 +129,7 @@ const WaterLevelIndicator = ({
               style={{ top: `${100 - normalPosition}%` }}
             >
               <div className="h-px w-2 bg-blue-400"></div>
-              <div className="text-[10px] text-blue-500 ml-1">{normalLevel}m</div>
+              <div className="text-[10px] text-blue-500 ml-1">{normalLevel.toPrecision(2)}m</div>
             </div>
 
             <div className="absolute bottom-0 right-0 left-0 flex items-center">
@@ -142,7 +142,7 @@ const WaterLevelIndicator = ({
               style={{ top: `${100 - fillPercentage}%` }}
             >
               <div className="h-0.5 w-4 bg-black"></div>
-              <div className="text-[10px] font-bold text-slate-900 ml-1">{currentLevel}m</div>
+              <div className="text-[10px] font-bold text-slate-900 ml-1">{currentLevel.toPrecision(2)}m</div>
             </div>
           </div>
 

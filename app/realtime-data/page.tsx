@@ -71,6 +71,8 @@
     const {value,setValue} = useContext(MyContext)
     const [maxVelocity, setMaxVelocity] = useState(0);
     const [meanVelocity, setMeanVelocity] = useState(0);
+    const [maxVelocityIncrease,setMaxVelocityIncrease] = useState(0);
+    const [meanVelocityIncrease,setMeanVelocityIncrease] = useState(0);
     // Format time consistently for both server and client
     const formatTime = (date: Date) => {
       const hours = date.getHours().toString().padStart(2, '0');
@@ -254,7 +256,7 @@
               color="blue"
               delay={0.1}
             />
-            
+          
             <StatCard 
               title="Max Velocity" 
               value={maxVelocity} 
@@ -265,6 +267,8 @@
                 </svg>
               }
               color="cyan"
+              change={{ value: maxVelocityIncrease, trend: maxVelocityIncrease > 0 ? 'up' : 'down' }}
+              
               delay={0.2}
             />
             
@@ -280,6 +284,8 @@
                 </svg>
               }
               color="purple"
+              change={{ value: meanVelocityIncrease, trend: meanVelocityIncrease > 0 ? 'up' : 'down' }}
+              
               delay={0.3}
             />
             
@@ -346,7 +352,7 @@
             {/* Velocity Profile */}
             <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
               <h2 className="text-xl font-semibold mb-4 text-slate-700">Velocity Profile</h2>
-              <VelocityChart setMaxVelocity={setMaxVelocity} setMeanVelocity={setMeanVelocity} data={velocityData} flowDirection={data.flowDirection} />
+              <VelocityChart setMaxVelocityIncrease={setMaxVelocityIncrease} setMeanVelocityIncrease={setMeanVelocityIncrease} setMaxVelocity={setMaxVelocity}  setMeanVelocity={setMeanVelocity} data={velocityData} flowDirection={data.flowDirection} />
               <div className="mt-4 text-sm text-slate-500">
                 Velocity distribution across the river channel sections from bank to bank.
                 Higher velocities typically occur in the central channel.

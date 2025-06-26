@@ -39,7 +39,7 @@ interface VelocityChartProps {
 // Time selection modes
 type TimeSelectionMode = 'dropdown' | 'manual' | 'range';
 
-const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setMaxVelocity }: VelocityChartProps) => {
+const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setMaxVelocity,setMeanVelocityIncrease,setMaxVelocityIncrease }: VelocityChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart.Chart | null>(null);
   const { value, setValue } = useContext(MyContext);
@@ -225,6 +225,10 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
       // console.log("Lines:", lines);
       let maxVelocity = 0;
       let meanVelocity = 0;
+      let prevMaxVelocity = 0;
+      console.log("\n\n\n\n\n\n\n\n\n\n")
+      console.log(lines);
+      console.log("\n\n\n\n\n\n\n\n\n\n")
       const lastVal = lines[lines.length - 1].trim().split(",").splice(1).map(item => {
         let num = parseFloat(item.trim());
         maxVelocity = Math.max(maxVelocity, num);
@@ -233,6 +237,22 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
       meanVelocity /= 10; // Assuming 10 sections
       setMaxVelocity(maxVelocity);
       setMeanVelocity(meanVelocity);
+      
+      // let prevmeanVelocity = 0;
+      // let prevmaxVelocity = 0;
+      // const prevVal = lines[lines.length - 2].trim().split(",").splice(1).map(item => {
+      //   let num = parseFloat(item.trim());
+      //    prevmaxVelocity = Math.max(maxVelocity, num);
+      //   prevmeanVelocity += num;
+
+      // })
+      // prevmeanVelocity/=10
+      // let put1 = (maxVelocity - prevmaxVelocity)/100
+      // let put2 = (meanVelocity - prevmeanVelocity)/100
+      // setMaxVelocityIncrease(put1);
+      // setMeanVelocityIncrease(put2);
+      
+      
       console.log("Last Line:", lastVal);
       const parsedData: VelocityData[] = [];
 
@@ -345,6 +365,7 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
 
   // Filter data based on selected date and time or range
   useEffect(() => {
+
     if (timeSelectionMode === 'range') {
       // Filter data for range mode
       const rangeFiltered = data.filter(d => isTimestampInRange(d.timestamp));
@@ -356,6 +377,23 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
         .filter(d => d.timestamp === targetTimestamp)
         .sort((a, b) => a.section - b.section);
       console.log("Filtered data:", filtered);
+      let maxVelocityi = 0;
+      let meanVelocityi = 0;
+      filtered.map(item=>{
+        maxVelocityi = Math.max(maxVelocityi, item.velocity);
+        meanVelocityi += item.velocity;
+      })
+      meanVelocityi /= 10;
+      setMaxVelocity((prev)=>{
+        setMaxVelocityIncrease(((maxVelocityi-prev)/prev*100).toPrecision(2))
+        
+        return maxVelocityi
+      });
+      setMeanVelocity((prev)=>{
+        setMeanVelocityIncrease(((meanVelocityi-prev)/prev*100).toPrecision(2))
+        return meanVelocityi
+      });
+    
       setFilteredData(filtered);
     }
   }, [selectedDate, selectedTime, data, timeSelectionMode, dateRangeStart, dateRangeEnd, timeRangeStart, timeRangeEnd]);
