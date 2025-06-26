@@ -620,7 +620,7 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
       >
         Dropdown Selection
       </button>
-      <button
+      {/* <button
         onClick={() => setTimeSelectionMode('manual')}
         className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
           timeSelectionMode === 'manual'
@@ -629,7 +629,7 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
         }`}
       >
         Manual Input
-      </button>
+      </button> */}
       <button
         onClick={() => setTimeSelectionMode('range')}
         className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -880,14 +880,17 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
                 <LineChart data={filteredTimeSeriesData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis 
-                    dataKey="timestamp" 
-                    stroke="#64748b"
-                    fontSize={11}
-                    tickFormatter={(value) => {
-                      const [date, time] = value.split(' ');
-                      return `${date}\n${time}`;
-                    }}
-                  />
+  dataKey="timestamp" 
+  stroke="#64748b"
+  fontSize={11}
+  angle={-45}
+  textAnchor="end"
+  height={80}
+  tickFormatter={(value) => {
+    const [date, time] = value.split(' ');
+    return `${date} ${time}`;
+  }}
+/>
                   <YAxis 
                     stroke="#64748b"
                     fontSize={11}
