@@ -19,6 +19,7 @@
     "dotenv": "^16.5.0",
     "framer-motion": "^11.18.2",
     "gsap": "^3.12.2",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.522.0",
     "mongoose": "^8.13.2",
     "next": "15.3.1",
@@ -27,6 +28,7 @@
     "postcss": "^8.5.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0",
     "react-parallax-tilt": "^1.7.291",
     "recharts": "^2.15.4",
     "three": "^0.177.0"
@@ -35,6 +37,7 @@
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4.1.4",
     "@types/bcrypt": "^5.0.2",
+    "@types/leaflet": "^1.9.19",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

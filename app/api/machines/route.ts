@@ -30,6 +30,8 @@ export async function GET(request:any) {
       name: machine.name || `Machine ${machine.id}`, // Default name if not set
       status: machine.status || 'offline', // Default status if not set
       addedAt: machine.addedAt || machine._id.getTimestamp(), // Use creation time if addedAt not available
+      longitude:machine.longitude,
+      latitude:machine.latitude,
       // Add any other fields you want to return, but NOT the password
       // lastSeen: machine.lastSeen,
       // location: machine.location,

@@ -16,7 +16,7 @@ interface Machine {
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-   const { value, setValue ,user,setUser} = useContext(MyContext);
+   const { value, setValue ,user,setUser,setAllMachines} = useContext(MyContext);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isMachinesMenuOpen, setIsMachinesMenuOpen] = useState(false);
   const [isAddMachineModalOpen, setIsAddMachineModalOpen] = useState(false);
@@ -40,6 +40,7 @@ const Navbar = () => {
     if (isAuthenticated) {
       setNavLinks((prev)=>([
         ...prev,{ name: 'Status Alerts', href: '/status' },{ name: 'Real-time Data', href: '/realtime-data' },
+        { name: 'Maps', href: '/maps' },
       ]))
       const fetchUserProfile = async () => {
         try {
@@ -78,7 +79,9 @@ const Navbar = () => {
           if (response.ok) {
             const data = await response.json();
             setMachines(data.machines || []);
+            setAllMachines(data.machines || []);
             console.log(data.machines)
+            console.log("Machines fetched:", data.machines);
             if(data.machines && data.machines.length > 0) {
               console.log("SSSSSSSSSSSSSSSSSSSSSSSSS")
               setValue({
@@ -178,11 +181,15 @@ const Navbar = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("DATA")
+        console.log(data)
         // Refresh machines list
         const machinesResponse = await fetch('/api/machines');
         if (machinesResponse.ok) {
           const machinesData = await machinesResponse.json();
           setMachines(machinesData.machines || []);
+          console.log("machines")
+          console.log(machinesData.machines)
         }
         
         // Reset form and close modal

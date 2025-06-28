@@ -13,10 +13,11 @@ export function Providers({ children }) {
     ip:"",
   });
   const [user,setUser] = useState([])
+  const [allMachines,setAllMachines] = useState([])
 
   return (
     <SessionProvider>
-      <MyContext.Provider value={{ value, setValue ,user,setUser }}>
+      <MyContext.Provider value={{ allMachines,setAllMachines,value, setValue ,user,setUser }}>
         {children}
       </MyContext.Provider>
     </SessionProvider>

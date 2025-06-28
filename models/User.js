@@ -13,6 +13,14 @@ const machineSchema = new mongoose.Schema({
   status:{
     type:String,
     default:"online"
+  },
+  longitude:{
+    type:String,
+    default:"0"
+  },
+  latitude:{
+    type:String,
+    default:"0"
   }
 })
 
