@@ -1,49 +1,36 @@
 "use client";
 import React, { useState, useEffect, useContext } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import { Moon, Sun, MapPin, Loader, Search, X, Plus, Edit, Save, AlertCircle } from 'lucide-react';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 import { useSession, signOut } from 'next-auth/react';
 import { MyContext } from '../providers';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 
-// Fix for default markers in react-leaflet
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// Dynamically import map-related components with SSR disabled
+const MapContainer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.MapContainer),
+  { ssr: false }
+);
 
-// Create custom markers for different types
-const createCustomIcon = (color = 'blue') => {
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `<div style="
-      background-color: ${color};
-      width: 25px;
-      height: 25px;
-      border-radius: 50% 50% 50% 0;
-      border: 2px solid white;
-      transform: rotate(-45deg);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    ">
-      <div style="
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) rotate(45deg);
-        width: 8px;
-        height: 8px;
-        background-color: white;
-        border-radius: 50%;
-      "></div>
-    </div>`,
-    iconSize: [25, 25],
-    iconAnchor: [12, 25],
-    popupAnchor: [0, -25],
-  });
-};
+const TileLayer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.TileLayer),
+  { ssr: false }
+);
+
+const Marker = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Marker),
+  { ssr: false }
+);
+
+const Popup = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Popup),
+  { ssr: false }
+);
+
+const useMapEvents = dynamic(
+  () => import('react-leaflet').then((mod) => mod.useMapEvents),
+  { ssr: false }
+);
 
 const MapComponent = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -52,6 +39,8 @@ const MapComponent = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredLocations, setFilteredLocations] = useState([]);
+  const [isClient, setIsClient] = useState(false);
+  const [L, setL] = useState(null);
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -66,6 +55,30 @@ const MapComponent = () => {
   const router = useRouter();
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
+
+  // Initialize client-side only code
+  useEffect(() => {
+    setIsClient(true);
+    
+    // Dynamically import Leaflet only on client side
+    const initializeLeaflet = async () => {
+      if (typeof window !== 'undefined') {
+        const leaflet = await import('leaflet');
+        await import('leaflet/dist/leaflet.css');
+        
+        // Fix for default markers in react-leaflet
+        leaflet.default.Icon.Default.mergeOptions({
+          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        });
+        
+        setL(leaflet.default);
+      }
+    };
+    
+    initializeLeaflet();
+  }, []);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -139,6 +152,38 @@ const MapComponent = () => {
 
   const clearSearch = () => {
     setSearchTerm('');
+  };
+
+  // Create custom markers for different types
+  const createCustomIcon = (color = 'blue') => {
+    if (!L) return null;
+    
+    return L.divIcon({
+      className: 'custom-marker',
+      html: `<div style="
+        background-color: ${color};
+        width: 25px;
+        height: 25px;
+        border-radius: 50% 50% 50% 0;
+        border: 2px solid white;
+        transform: rotate(-45deg);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      ">
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(45deg);
+          width: 8px;
+          height: 8px;
+          background-color: white;
+          border-radius: 50%;
+        "></div>
+      </div>`,
+      iconSize: [25, 25],
+      iconAnchor: [12, 25],
+      popupAnchor: [0, -25],
+    });
   };
 
   // Open modal for adding/editing location
@@ -241,7 +286,9 @@ const MapComponent = () => {
 
   // Component to handle map clicks
   const MapClickHandler = () => {
-    useMapEvents({
+    if (!isClient || !useMapEvents) return null;
+    
+    const MapEvents = useMapEvents({
       click: (e) => {
         const { lat, lng } = e.latlng;
         setClickedLocation({ 
@@ -414,83 +461,91 @@ const MapComponent = () => {
         {/* Map Container */}
         <div className={`rounded-lg shadow-lg overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
           <div className="w-full h-96 relative" style={{ minHeight: '500px' }}>
-            <MapContainer
-              center={[defaultLat, defaultLng]}
-              zoom={12}
-              style={{ height: '100%', width: '100%' }}
-              className="z-0"
-            >
-              <TileLayer
-                key={isDarkMode ? 'dark' : 'light'}
-                url={tileLayerUrl}
-                attribution={tileLayerAttribution}
-                subdomains={isDarkMode ? 'abcd' : 'abc'}
-                maxZoom={19}
-              />
-              
-              {/* Machine markers (only show those with valid coordinates) */}
-              {filteredLocations
-                .filter(location => location.latitude !== 0 && location.longitude !== 0)
-                .map((location) => (
-                <Marker
-                  key={location.id}
-                  position={[location.latitude, location.longitude]}
-                  icon={createCustomIcon(getMarkerColor(location.category))}
-                >
-                  <Popup maxWidth={300}>
-                    <div className="p-3 max-w-sm" onClick={()=>{
-                            setValue({
-                                ip:location.id,
-                                name:location.name
-                            })
-                             new Promise(resolve => setTimeout(resolve, 100)).then(()=>{
-                                router.push("/realtime-data")
-                             })
-
-                            
-
-                    }}>
-                      <img
-                        src={location.image}
-                        alt={location.name}
-                        className="w-full h-32 object-cover rounded-lg mb-3"
-                        onError={(e) => {
-                          e.target.src = 'https://img.freepik.com/free-vector/graident-ai-robot-vectorart_78370-4114.jpg?semt=ais_hybrid&w=740';
-                        }}
-                      />
-                      <h3 className="font-bold text-lg mb-2">{location.name}</h3>
-                      <p className="text-sm text-gray-600 mb-2">{location.description}</p>
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                          {location.category}
-                        </span>
-                        <span className="text-gray-500">
-                          {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
-                        </span>
+            {isClient && L ? (
+              <MapContainer
+                center={[defaultLat, defaultLng]}
+                zoom={12}
+                style={{ height: '100%', width: '100%' }}
+                className="z-0"
+              >
+                <TileLayer
+                  key={isDarkMode ? 'dark' : 'light'}
+                  url={tileLayerUrl}
+                  attribution={tileLayerAttribution}
+                  subdomains={isDarkMode ? 'abcd' : 'abc'}
+                  maxZoom={19}
+                />
+                
+                {/* Machine markers (only show those with valid coordinates) */}
+                {filteredLocations
+                  .filter(location => location.latitude !== 0 && location.longitude !== 0)
+                  .map((location) => (
+                  <Marker
+                    key={location.id}
+                    position={[location.latitude, location.longitude]}
+                    icon={createCustomIcon(getMarkerColor(location.category))}
+                  >
+                    <Popup maxWidth={300}>
+                      <div className="p-3 max-w-sm cursor-pointer" onClick={()=>{
+                              setValue({
+                                  ip:location.id,
+                                  name:location.name
+                              })
+                               new Promise(resolve => setTimeout(resolve, 100)).then(()=>{
+                                  router.push("/realtime-data")
+                               })
+                      }}>
+                        <img
+                          src={location.image}
+                          alt={location.name}
+                          className="w-full h-32 object-cover rounded-lg mb-3"
+                          onError={(e) => {
+                            e.target.src = 'https://img.freepik.com/free-vector/graident-ai-robot-vectorart_78370-4114.jpg?semt=ais_hybrid&w=740';
+                          }}
+                        />
+                        <h3 className="font-bold text-lg mb-2">{location.name}</h3>
+                        <p className="text-sm text-gray-600 mb-2">{location.description}</p>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            {location.category}
+                          </span>
+                          <span className="text-gray-500">
+                            {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+                    </Popup>
+                  </Marker>
+                ))}
 
-              {/* Custom clicked location marker */}
-              {clickedLocation && (
-                <Marker 
-                  position={clickedLocation.position}
-                  icon={createCustomIcon('#EF4444')}
-                >
-                  <Popup>
-                    <div className="p-2">
-                      <strong>Custom Location</strong><br/>
-                      Lat: {clickedLocation.lat}<br/>
-                      Lng: {clickedLocation.lng}
-                    </div>
-                  </Popup>
-                </Marker>
-              )}
+                {/* Custom clicked location marker */}
+                {clickedLocation && (
+                  <Marker 
+                    position={clickedLocation.position}
+                    icon={createCustomIcon('#EF4444')}
+                  >
+                    <Popup>
+                      <div className="p-2">
+                        <strong>Custom Location</strong><br/>
+                        Lat: {clickedLocation.lat}<br/>
+                        Lng: {clickedLocation.lng}
+                      </div>
+                    </Popup>
+                  </Marker>
+                )}
 
-              <MapClickHandler />
-            </MapContainer>
+                <MapClickHandler />
+              </MapContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <Loader className="animate-spin h-12 w-12 text-blue-500 mx-auto mb-4" />
+                  <p className={`text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Loading map...
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -9,7 +9,7 @@ export async function POST(request) {
   try {
     // Parse JSON body
     const { email, machinePassword, latitude, longitude } = await request.json();
-
+    console.log(email)
     if (!email || !machinePassword || !latitude || !longitude) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
