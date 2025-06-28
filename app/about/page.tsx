@@ -26,18 +26,7 @@ const staggerContainer = {
 export default function About() {
   // Team members data
   const teamMembers = [
-    {
-      name: "Dr. Vivek Gupta",
-      role: "",
-      bio: "Faculty Advisor at Visiflow, Prof. Vivek Gupta provides guidance on technical strategy and research direction. His expertise and mentorship play a vital role in shaping the project's real-world impact and academic rigor.",
-      image: "https://pbs.twimg.com/profile_images/1639867545548382208/hx9KZE5z_400x400.jpg"
-    },
-    {
-      name: "Siddik Barbhuiya",
-      role: "",
-      bio: "A PhD scholar and research collaborator at Visiflow, Siddik contributes to the scientific and analytical aspects of the project. His research-driven insights help refine the accuracy and effectiveness of the flood detection system.",
-      image: "https://scene.iitmandi.ac.in/uploads/our_team/1716658638288056.jpg"
-    },
+    
     {
       name: "Dharkan Anand",
       role: "",
@@ -56,46 +45,33 @@ export default function About() {
       bio: "A core team member at Visiflow, Kunal focuses on building seamless user experiences and scalable backend systems. His work bridges the gap between field data and intuitive digital platforms, helping deliver real-time insights to users.",
       image: "kunal.jpg"
     },
-    {
-      name: "Gauri Agarwal",
-      role: "",
-      bio: "A key contributor at Visiflow, Gauri specializes in the electronics and hardware systems. She ensures that all components—from sensors to circuits—are optimized for reliable, real-time flood monitoring in the field.",
-      image: "gauri.jpg"
-    }
+    
   ];
 
   // Company milestones
   const milestones = [
     {
-      year: "2018",
+      year: "2024",
       title: "Visiflow Founded",
-      description: "Dr. Emma Chen establishes Visiflow with a mission to revolutionize flood prediction through advanced sensor technology."
+      description: "Founded by Om Maheshawri"
     },
     {
-      year: "2019",
+      year: "2024",
       title: "First Prototype",
       description: "Development of the first Visiflow sensor prototype, capable of monitoring water levels with unprecedented accuracy."
     },
+    
     {
-      year: "2020",
-      title: "Seed Funding",
-      description: "Secured $3.5M in seed funding from climate tech investors to scale operations and enhance R&D capabilities."
-    },
-    {
-      year: "2021",
+      year: "2024",
       title: "First Deployments",
       description: "Successfully deployed sensors in 5 flood-prone regions, providing early warnings that helped evacuate over 15,000 people."
     },
     {
-      year: "2022",
+      year: "2024",
       title: "AI Integration",
       description: "Introduced advanced AI algorithms to enhance prediction accuracy, reducing false alarms by 78%."
     },
-    {
-      year: "2023",
-      title: "Global Expansion",
-      description: "Expanded operations to 12 countries, partnering with local governments and disaster management agencies."
-    }
+    
   ];
 
   return (
