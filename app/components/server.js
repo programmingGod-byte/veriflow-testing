@@ -1,5 +1,6 @@
 const express = require('express');
 const serveIndex = require('serve-index');
+const csv = require('csv-parser');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
@@ -45,7 +46,7 @@ app.get('/depth/timestamp', (req, res) => {
 
   rl.on('line', (line) => {
     lineCount++;
-    if (lineCount <= 63) return; // Skip the first 63 lines
+    if (lineCount <= 64) return; // Skip the first 63 lines
 
     // CSV is comma separated
     const tokens = line.split(',');
@@ -56,7 +57,7 @@ app.get('/depth/timestamp', (req, res) => {
       if (dateTimeParts.length >= 2) {
         const datePart = dateTimeParts[0];
         const timePart = dateTimeParts.slice(1).join(' ');
-        timestamps.push({ date: datePart, time: timePart });
+        timestamps.push({ date: datePart, time: timePart ,average:parseFloat(tokens[tokens.length - 1])});
       }
     }
   });
@@ -266,6 +267,29 @@ app.get('/video-latest', (req, res) => {
     res.json({ name: latestVideo });
   });
 });
+
+app.get('/api/flow-angles', (req, res) => {
+  const results = [];
+
+  fs.createReadStream("/home/ec2-user/flow_angle.csv")
+    .pipe(csv({ separator: ',' }))
+    .on('data', (data) => {
+      const timestamp = data['timestamp']?.trim();
+      const flowAngle = parseFloat(data['flowangle']?.trim());
+
+      if (timestamp && !isNaN(flowAngle)) {
+        results.push({ timestamp, flowAngle });
+      }
+    })
+    .on('end', () => {
+      console.log(results)
+      res.json(results);
+    })
+    .on('error', (err) => {
+      res.status(500).json({ error: 'Failed to read CSV file', details: err.message });
+    });
+});
+
 
 // Start the server on port 5000
 const PORT = 5000;

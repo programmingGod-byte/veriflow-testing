@@ -33,9 +33,10 @@ interface VelocityChartProps {
   flowDirection?: number;
   setMeanVelocity?: any;
   setMaxVelocity?: any;
+  setMeanVelocityIncrease?: any;  // Add this
+  setMaxVelocityIncrease?: any;   // Add this
   data?: any;
 }
-
 // Time selection modes
 type TimeSelectionMode = 'dropdown' | 'manual' | 'range';
 
@@ -238,14 +239,28 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
       setMaxVelocity(maxVelocity);
       setMeanVelocity(meanVelocity);
       
-      // let prevmeanVelocity = 0;
-      // let prevmaxVelocity = 0;
-      // const prevVal = lines[lines.length - 2].trim().split(",").splice(1).map(item => {
-      //   let num = parseFloat(item.trim());
-      //    prevmaxVelocity = Math.max(maxVelocity, num);
-      //   prevmeanVelocity += num;
-
-      // })
+// Calculate previous day's values (second to last line)
+if (lines.length > 1) {
+  let prevMaxVelocity = 0;
+  let prevMeanVelocity = 0;
+  const prevValues = lines[lines.length - 2].trim().split(",").splice(1);
+  
+  prevValues.forEach(item => {
+    let num = parseFloat(item.trim());
+    if (!isNaN(num)) {
+      prevMaxVelocity = Math.max(prevMaxVelocity, num);
+      prevMeanVelocity += num;
+    }
+  });
+  prevMeanVelocity /= 10;
+  
+  // Calculate percentage increases
+  const maxVelocityIncrease = prevMaxVelocity !== 0 ? ((maxVelocity - prevMaxVelocity) / prevMaxVelocity * 100) : 0;
+  const meanVelocityIncrease = prevMeanVelocity !== 0 ? ((meanVelocity - prevMeanVelocity) / prevMeanVelocity * 100) : 0;
+  
+  setMaxVelocityIncrease(maxVelocityIncrease.toFixed(2));
+  setMeanVelocityIncrease(meanVelocityIncrease.toFixed(2));
+}
       // prevmeanVelocity/=10
       // let put1 = (maxVelocity - prevmaxVelocity)/100
       // let put2 = (meanVelocity - prevmeanVelocity)/100
@@ -384,16 +399,8 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
         meanVelocityi += item.velocity;
       })
       meanVelocityi /= 10;
-      setMaxVelocity((prev)=>{
-        setMaxVelocityIncrease(((maxVelocityi-prev)/prev*100).toPrecision(2))
-        
-        return maxVelocityi
-      });
-      setMeanVelocity((prev)=>{
-        setMeanVelocityIncrease(((meanVelocityi-prev)/prev*100).toPrecision(2))
-        return meanVelocityi
-      });
-    
+     setMaxVelocity(maxVelocityi);
+setMeanVelocity(meanVelocityi);
       setFilteredData(filtered);
     }
   }, [selectedDate, selectedTime, data, timeSelectionMode, dateRangeStart, dateRangeEnd, timeRangeStart, timeRangeEnd]);

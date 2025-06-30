@@ -23,7 +23,8 @@
   import WaterLevelIndicator from '../components/WaterLevelIndicator';
   import { MyContext } from '../providers';
   import MediaViewer from '../components/DisplayImageAndVideos';
-
+// import FlowAngleDashboard from '../components/FlowDirectionChart';
+import TemperatureChart from '../components/TemperatureChart';
   // Mock data based on the provided images
   const riverData = {
     flowDirection: 62.5,
@@ -381,7 +382,27 @@
                 based on the cross-sectional area and flow velocity at each position.
               </div>
             </div> */}
+
+
           </div>
+
+<div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+            <h2 className="text-xl font-semibold mb-4 text-slate-700">Temperature Over Time</h2>
+          <TemperatureChart/>
+  <div className="mt-4 text-sm text-slate-500">
+            </div>
+          </div>
+
+          
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
+            {/* <FlowAngleDashboard /> */}
+          
+          
+            <div className="mt-4 text-sm text-slate-500">
+              
+            </div>
+          </div>
+          
 
           <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100">
             <MediaViewer />

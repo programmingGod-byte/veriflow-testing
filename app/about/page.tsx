@@ -25,7 +25,14 @@ const staggerContainer = {
 
 export default function About() {
   // Team members data
+
   const teamMembers = [
+    {
+      name: "Dr. Vivek Gupta",
+      role: "",
+      bio: "Faculty Advisor at Visiflow, Prof. Vivek Gupta provides guidance on technical strategy and research direction. His expertise and mentorship play a vital role in shaping the project's real-world impact and academic rigor.",
+      image: "https://pbs.twimg.com/profile_images/1639867545548382208/hx9KZE5z_400x400.jpg"
+    },
     
     {
       name: "Dharkan Anand",
@@ -50,6 +57,7 @@ export default function About() {
 
   // Company milestones
   const milestones = [
+    
     {
       year: "2024",
       title: "Visiflow Founded",

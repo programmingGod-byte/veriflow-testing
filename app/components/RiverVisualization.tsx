@@ -365,7 +365,8 @@ const RiverDepthVisualization = ({ serverIp = "13.203.226.108" }: RiverDepthVisu
       const dateTimeB = new Date(`${b.date}T${b.time}`);
       return dateTimeA.getTime() - dateTimeB.getTime();
     });
-
+    console.log("AAAAAAAAAAAAAAAAAAA")
+    console.log(filtered)
     setFilteredData(filtered);
   };
 
