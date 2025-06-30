@@ -40,7 +40,7 @@ const Navbar = () => {
     if (isAuthenticated) {
       setNavLinks((prev)=>([
         ...prev,{ name: 'Status Alerts', href: '/status' },{ name: 'Real-time Data', href: '/realtime-data' },
-        { name: 'Maps', href: '/maps' },
+        
       ]))
       const fetchUserProfile = async () => {
         try {
@@ -52,6 +52,7 @@ const Navbar = () => {
             if(data.user.email=="verigeektech@gmail.com" || data.user.email=="omdaga6@gmail.com"){
               setNavLinks((prev)=>([
                 ...prev,{ name: 'See contact', href: '/checkcontact' },
+                { name: 'Maps', href: '/maps' }
               ]))
             }
             if (data.user?.profileImage) {
