@@ -44,3 +44,51 @@ export async function PUT(request: Request, context: { params: { id: string } })
     return NextResponse.json({ error: 'Server error while updating machine' }, { status: 500 });
   }
 }
+
+
+
+
+
+
+
+
+export async function DELETE(
+  request: Request,
+  context: { params: { id: string } }
+) {
+  const session = await getServerSession();
+
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
+  try {
+    await connectToDatabase();
+
+    const machineId = context.params.id;
+    const user = await User.findOne({ email: session.user.email });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const originalMachineCount = user.machines.length;
+
+    // Remove machine by matching `password` to `machineId`
+    user.machines = user.machines.filter(
+      (machine: any) => machine.password !== machineId
+    );
+
+    if (user.machines.length === originalMachineCount) {
+      return NextResponse.json({ error: 'Machine not found' }, { status: 404 });
+    }
+
+    await user.save();
+
+    return NextResponse.json({ message: 'Machine deleted successfully' });
+
+  } catch (error: any) {
+    console.error('Error deleting machine:', error);
+    return NextResponse.json({ error: 'Server error while deleting machine' }, { status: 500 });
+  }
+}
