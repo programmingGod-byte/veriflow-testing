@@ -219,9 +219,11 @@ const Navbar = () => {
 
   // Handle delete machine
   const handleDeleteMachine = async (machineId: string) => {
+    console.log("INSIDE DELETE FUNCTION")
     if (!confirm('Are you sure you want to delete this machine?')) {
       return;
     }
+
 
     setIsDeletingMachine(true);
 
@@ -493,15 +495,16 @@ const Navbar = () => {
                                     </svg>
                                   </button>
                                   
-                                  {/* Delete Button */}
+                                  {/* Del ete Button */}
                                   <button
                                     onClick={(e) => {
+                                      console.log("clicked")
                                       e.stopPropagation();
                                       handleDeleteMachine(machine.id);
                                     }}
                                     className="p-1 rounded-full hover:bg-red-100 text-red-600 transition-colors"
                                     title="Delete machine"
-                                    disabled={isDeletingMachine}
+                                    disabled={false}
                                   >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                       <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -724,32 +727,32 @@ const Navbar = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
           >
-            <h2 className="text-xl font-bold mb-4">Add New Machine</h2>
+            <h2 className="text-xl text-black font-bold mb-4">Add New Machine</h2>
             <form onSubmit={handleAddMachine}>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Machine ID (IP Address)
+                    Machine name
                   </label>
                   <input
                     type="text"
                     value={machineId}
                     onChange={(e) => setMachineId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., 192.168.1.100"
+                    className="w-full text-black px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="name"
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Password
+                    Ip
                   </label>
                   <input
-                    type="password"
+                    type="text"
                     value={machinePassword}
                     onChange={(e) => setMachinePassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter machine password"
+                    className="w-full text-black px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="IP"
                     required
                   />
                 </div>
@@ -758,7 +761,7 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={() => setIsAddMachineModalOpen(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex-1 text-black px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
