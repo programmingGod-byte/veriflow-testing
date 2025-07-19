@@ -2,14 +2,7 @@ import mongoose from 'mongoose';
 
 
 const machineSchema = new mongoose.Schema({
-  id:{
-    type:String,
-    required:true
-  },
-  password:{
-    type:String,
-    required:true
-  },
+  
   status:{
     type:String,
     default:"online"
@@ -21,7 +14,19 @@ const machineSchema = new mongoose.Schema({
   latitude:{
     type:String,
     default:"0"
-  }
+  },
+  machineName:{
+    type:String,
+    required:true,
+  },
+  machineCode:{
+    type:String,required:true
+  },
+  machineType:{
+    type:String,
+    required:true,
+    enum:["pravaah","tarang","drishti","doordrishti"]
+  },
 })
 
 const UserSchema = new mongoose.Schema({

@@ -195,7 +195,7 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
   };
 
   // Fetch data from API
-  
+
 
   // Initial data fetch
   useEffect(() => {
@@ -207,171 +207,171 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
     fetchData(true);
   };
 
-// Update available times when date changes (corrected useEffect)
-useEffect(() => {
-  if (selectedDate && data.length > 0) {
-    const timestamps = [...new Set(data.map(d => d.timestamp))];
-    const timesForDate = timestamps
-      .filter(ts => ts.startsWith(selectedDate))
-      .map(ts => ts.split(' ')[1])
-      .sort()
-      .reverse(); // Descending order (latest time first)
-    setAvailableTimes(timesForDate);
-    if (timesForDate.length > 0 && !timesForDate.includes(selectedTime)) {
-      setSelectedTime(timesForDate[0]); // Select the latest time
-    }
-  }
-}, [selectedDate, data]);
-
-// Fetch data from API
-const fetchData = async (isRefresh = false) => {
-  try {
-    console.log("VALUE")
-    console.log(value)
-    if (!value.ip) {
-      return
-    }
-    
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-    
-    setError(null);
-    
-    console.log(value)
-    const response = await fetch(`/api/csv?ip=${value.ip}`);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const csvText = await response.text();
-    console.log(csvText);
-
-    console.log(csvText)
-    const lines = csvText.trim().split('\n');
-    // console.log("Lines:", lines);
-    let maxVelocity = 0;
-    let meanVelocity = 0;
-    let prevMaxVelocity = 0;
-    console.log("\n\n\n\n\n\n\n\n\n\n")
-    console.log(lines);
-    console.log("\n\n\n\n\n\n\n\n\n\n")
-    
-    const parsedData: VelocityData[] = [];
-
-    lines.forEach(line => {
-      const parts = line.trim().split(',').map(part => part.trim());
-      // console.log("Parts:", parts);
-
-      if (parts.length >= 11) { // timestamp + 10 velocity values
-        const timestamp = parts[0];
-
-        // Create one data point for each section (1-10)
-        for (let section = 1; section <= 10; section++) {
-          const velocityIndex = section; // sections 1-10 correspond to indices 1-10
-          const velocity = parseFloat(parts[velocityIndex]);
-
-          if (!isNaN(velocity)) {
-            parsedData.push({
-              section: section,
-              velocity: velocity,
-              timestamp: timestamp
-            });
-          }
-        }
-      }
-    });
-
-    // Find the latest timestamp from parsed data
-    const latestTimestamp = parsedData.reduce((latest, current) => {
-      return new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest;
-    }).timestamp;
-
-    // Calculate velocity for the latest timestamp
-    const latestData = parsedData.filter(d => d.timestamp === latestTimestamp);
-    maxVelocity = 0;
-    meanVelocity = 0;
-
-    latestData.forEach(item => {
-      maxVelocity = Math.max(maxVelocity, item.velocity);
-      meanVelocity += item.velocity;
-    });
-
-    meanVelocity /= latestData.length;
-    setMaxVelocity(maxVelocity);
-    setMeanVelocity(meanVelocity);
-
-    // Calculate previous timestamp values for percentage increase
-    const uniqueTimestamps = [...new Set(parsedData.map(d => d.timestamp))].sort();
-    if (uniqueTimestamps.length > 1) {
-      const previousTimestamp = uniqueTimestamps[uniqueTimestamps.length - 2];
-      const prevData = parsedData.filter(d => d.timestamp === previousTimestamp);
-      
-      let prevMaxVelocity = 0;
-      let prevMeanVelocity = 0;
-      
-      prevData.forEach(item => {
-        prevMaxVelocity = Math.max(prevMaxVelocity, item.velocity);
-        prevMeanVelocity += item.velocity;
-      });
-      
-      prevMeanVelocity /= prevData.length;
-      
-      // Calculate percentage increases
-      const maxVelocityIncrease = prevMaxVelocity !== 0 ? ((maxVelocity - prevMaxVelocity) / prevMaxVelocity * 100) : 0;
-      const meanVelocityIncrease = prevMeanVelocity !== 0 ? ((meanVelocity - prevMeanVelocity) / prevMeanVelocity * 100) : 0;
-      
-      setMaxVelocityIncrease(maxVelocityIncrease.toFixed(2));
-      setMeanVelocityIncrease(meanVelocityIncrease.toFixed(2));
-    }
-
-    console.log("Parsed data:", parsedData);
-    setData(parsedData);
-    
-    // Calculate time series data
-    const timeSeries = calculateTimeSeriesData(parsedData);
-    setTimeSeriesData(timeSeries);
-
-    // Extract unique dates and times
-    const timestamps = [...new Set(parsedData.map(d => d.timestamp))];
-    const dates = [...new Set(timestamps.map(ts => ts.split(' ')[0]))].sort().reverse(); // Descending order (newest first)
-    setAvailableDates(dates);
-
-    // Set initial date (latest date - now it's the first in the array)
-    if (dates.length > 0) {
-      const latestDate = dates[0]; // Get the latest date (first in reversed array)
-      setSelectedDate(latestDate);
-      setManualDate(formatDateForInput(latestDate));
-      setDateRangeStart(formatDateForInput(dates[dates.length - 1])); // oldest date
-      setDateRangeEnd(formatDateForInput(latestDate)); // newest date
-      
+  // Update available times when date changes (corrected useEffect)
+  useEffect(() => {
+    if (selectedDate && data.length > 0) {
+      const timestamps = [...new Set(data.map(d => d.timestamp))];
       const timesForDate = timestamps
-        .filter(ts => ts.startsWith(latestDate))
+        .filter(ts => ts.startsWith(selectedDate))
         .map(ts => ts.split(' ')[1])
         .sort()
         .reverse(); // Descending order (latest time first)
       setAvailableTimes(timesForDate);
-      if (timesForDate.length > 0) {
-        const latestTime = timesForDate[0]; // Get the latest time (first in reversed array)
-        setSelectedTime(latestTime);
-        setManualTime(latestTime);
-        setTimeRangeStart(timesForDate[timesForDate.length - 1]); // earliest time
-        setTimeRangeEnd(latestTime); // latest time
+      if (timesForDate.length > 0 && !timesForDate.includes(selectedTime)) {
+        setSelectedTime(timesForDate[0]); // Select the latest time
       }
     }
-    setLastFetchTime(new Date());
+  }, [selectedDate, data]);
 
-  } catch (err) {
-    console.error("Error fetching data:", err);
-    setError(err instanceof Error ? err.message : 'Failed to fetch data');
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
+  // Fetch data from API
+  const fetchData = async (isRefresh = false) => {
+    try {
+      console.log("VALUE")
+      console.log(value)
+      if (!value.machineCode) {
+        return
+      }
+
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      setError(null);
+
+      console.log(value)
+      const response = await fetch(`/api/csv?ip=${value.machineCode}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const csvText = await response.text();
+      console.log(csvText);
+
+      console.log(csvText)
+      const lines = csvText.trim().split('\n');
+      // console.log("Lines:", lines);
+      let maxVelocity = 0;
+      let meanVelocity = 0;
+      let prevMaxVelocity = 0;
+      console.log("\n\n\n\n\n\n\n\n\n\n")
+      console.log(lines);
+      console.log("\n\n\n\n\n\n\n\n\n\n")
+
+      const parsedData: VelocityData[] = [];
+
+      lines.forEach(line => {
+        const parts = line.trim().split(',').map(part => part.trim());
+        // console.log("Parts:", parts);
+
+        if (parts.length >= 11) { // timestamp + 10 velocity values
+          const timestamp = parts[0];
+
+          // Create one data point for each section (1-10)
+          for (let section = 1; section <= 10; section++) {
+            const velocityIndex = section; // sections 1-10 correspond to indices 1-10
+            const velocity = parseFloat(parts[velocityIndex]);
+
+            if (!isNaN(velocity)) {
+              parsedData.push({
+                section: section,
+                velocity: velocity,
+                timestamp: timestamp
+              });
+            }
+          }
+        }
+      });
+
+      // Find the latest timestamp from parsed data
+      const latestTimestamp = parsedData.reduce((latest, current) => {
+        return new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest;
+      }).timestamp;
+
+      // Calculate velocity for the latest timestamp
+      const latestData = parsedData.filter(d => d.timestamp === latestTimestamp);
+      maxVelocity = 0;
+      meanVelocity = 0;
+
+      latestData.forEach(item => {
+        maxVelocity = Math.max(maxVelocity, item.velocity);
+        meanVelocity += item.velocity;
+      });
+
+      meanVelocity /= latestData.length;
+      setMaxVelocity(maxVelocity);
+      setMeanVelocity(meanVelocity);
+
+      // Calculate previous timestamp values for percentage increase
+      const uniqueTimestamps = [...new Set(parsedData.map(d => d.timestamp))].sort();
+      if (uniqueTimestamps.length > 1) {
+        const previousTimestamp = uniqueTimestamps[uniqueTimestamps.length - 2];
+        const prevData = parsedData.filter(d => d.timestamp === previousTimestamp);
+
+        let prevMaxVelocity = 0;
+        let prevMeanVelocity = 0;
+
+        prevData.forEach(item => {
+          prevMaxVelocity = Math.max(prevMaxVelocity, item.velocity);
+          prevMeanVelocity += item.velocity;
+        });
+
+        prevMeanVelocity /= prevData.length;
+
+        // Calculate percentage increases
+        const maxVelocityIncrease = prevMaxVelocity !== 0 ? ((maxVelocity - prevMaxVelocity) / prevMaxVelocity * 100) : 0;
+        const meanVelocityIncrease = prevMeanVelocity !== 0 ? ((meanVelocity - prevMeanVelocity) / prevMeanVelocity * 100) : 0;
+
+        setMaxVelocityIncrease(maxVelocityIncrease.toFixed(2));
+        setMeanVelocityIncrease(meanVelocityIncrease.toFixed(2));
+      }
+
+      console.log("Parsed data:", parsedData);
+      setData(parsedData);
+
+      // Calculate time series data
+      const timeSeries = calculateTimeSeriesData(parsedData);
+      setTimeSeriesData(timeSeries);
+
+      // Extract unique dates and times
+      const timestamps = [...new Set(parsedData.map(d => d.timestamp))];
+      const dates = [...new Set(timestamps.map(ts => ts.split(' ')[0]))].sort().reverse(); // Descending order (newest first)
+      setAvailableDates(dates);
+
+      // Set initial date (latest date - now it's the first in the array)
+      if (dates.length > 0) {
+        const latestDate = dates[0]; // Get the latest date (first in reversed array)
+        setSelectedDate(latestDate);
+        setManualDate(formatDateForInput(latestDate));
+        setDateRangeStart(formatDateForInput(dates[dates.length - 1])); // oldest date
+        setDateRangeEnd(formatDateForInput(latestDate)); // newest date
+
+        const timesForDate = timestamps
+          .filter(ts => ts.startsWith(latestDate))
+          .map(ts => ts.split(' ')[1])
+          .sort()
+          .reverse(); // Descending order (latest time first)
+        setAvailableTimes(timesForDate);
+        if (timesForDate.length > 0) {
+          const latestTime = timesForDate[0]; // Get the latest time (first in reversed array)
+          setSelectedTime(latestTime);
+          setManualTime(latestTime);
+          setTimeRangeStart(timesForDate[timesForDate.length - 1]); // earliest time
+          setTimeRangeEnd(latestTime); // latest time
+        }
+      }
+      setLastFetchTime(new Date());
+
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
 
 
@@ -639,7 +639,7 @@ const fetchData = async (isRefresh = false) => {
           <p className="text-sm font-semibold text-slate-700 mb-2">{`Time: ${label}`}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {`${entry.dataKey === 'meanVelocity' ? 'Mean' : 'Max'} Velocity: ${entry.value.toFixed(4)} m/s`}
+              {`${entry.dataKey === 'meanVelocity' ? '' : 'Max'} Velocity: ${entry.value.toFixed(4)} m/s`}
             </p>
           ))}
         </div>
@@ -672,8 +672,8 @@ const fetchData = async (isRefresh = false) => {
       <button
         onClick={() => setTimeSelectionMode('dropdown')}
         className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${timeSelectionMode === 'dropdown'
-            ? 'bg-blue-600 text-white'
-            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          ? 'bg-blue-600 text-white'
+          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
           }`}
       >
         Dropdown Selection
@@ -691,8 +691,8 @@ const fetchData = async (isRefresh = false) => {
       <button
         onClick={() => setTimeSelectionMode('range')}
         className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${timeSelectionMode === 'range'
-            ? 'bg-purple-600 text-white'
-            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          ? 'bg-purple-600 text-white'
+          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
           }`}
       >
         Date Range
@@ -944,9 +944,23 @@ const fetchData = async (isRefresh = false) => {
                     textAnchor="end"
                     height={80}
                     tickFormatter={(value) => {
-                      const [date, time] = value.split(' ');
-                      return `${date} ${time}`;
+                      const dateObj = new Date(value);
+
+                      const hours = dateObj.getHours();
+                      const minutes = dateObj.getMinutes();
+
+                      // Round down to nearest 15-minute interval
+                      const roundedMinutes = Math.floor(minutes / 15) * 15;
+
+                      const year = dateObj.getFullYear();
+                      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                      const day = String(dateObj.getDate()).padStart(2, '0');
+                      const hour = String(hours).padStart(2, '0');
+                      const minute = String(roundedMinutes).padStart(2, '0');
+
+                      return `${year}-${month}-${day} ${hour}:${minute}`;
                     }}
+
                   />
                   <YAxis
                     stroke="#64748b"
@@ -965,11 +979,11 @@ const fetchData = async (isRefresh = false) => {
                     dataKey="meanVelocity"
                     stroke="#3b82f6"
                     strokeWidth={2}
-                    name="Mean Velocity"
+                    name="Velocity"
                     dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
                     activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#ffffff' }}
                   />
-                  <Line
+                  {/* <Line
                     type="monotone"
                     dataKey="maxVelocity"
                     stroke="#ef4444"
@@ -977,7 +991,7 @@ const fetchData = async (isRefresh = false) => {
                     name="Max Velocity"
                     dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
                     activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2, fill: '#ffffff' }}
-                  />
+                  /> */}
                 </LineChart>
               </ResponsiveContainer>
             ) : (

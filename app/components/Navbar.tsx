@@ -1,22 +1,29 @@
 "use client";
 
-import { useState, useEffect,useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { MyContext } from '../providers';
-
+import AddMachineModal from './MachineModal';
+import MachineDetailsWidget from './machineWidgit';
+import {encrypt,decrypt} from "@/app/encrypter"
 interface Machine {
-  id: string;
-  name?: string;
+  machineCode: string;
+  machineName?: string;
+  machineType?: string;
   status?: 'online' | 'offline' | 'maintenance';
 }
 
+function isValidIPv4(ip: string): boolean {
+  const ipv4Regex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
+  return ipv4Regex.test(ip);
+}
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-   const { value, setValue ,user,setUser,setAllMachines} = useContext(MyContext);
+  const { value, setValue, user, setUser, setAllMachines } = useContext(MyContext);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isMachinesMenuOpen, setIsMachinesMenuOpen] = useState(false);
   const [isAddMachineModalOpen, setIsAddMachineModalOpen] = useState(false);
@@ -31,22 +38,25 @@ const Navbar = () => {
   const [isEditingMachine, setIsEditingMachine] = useState(false);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
   const [editMachineName, setEditMachineName] = useState('');
+  const [editMachineType,setEditMachineType] = useState("")
   const [editMachineIp, setEditMachineIp] = useState('');
+  const [selectedMachineType, setSelectedMachineType] = useState('');
+  const [isMachineDetailsOpen, setIsMachineDetailsOpen] = useState(false);
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
-  const [navLinks,setNavLinks] = useState([
+  const [navLinks, setNavLinks] = useState([
     { name: 'Home', href: '/' },
-    
+
     // { name: 'Status Alerts', href: '/status' },
     { name: 'About Us', href: '/about' },
   ])
   // Fetch user profile data including custom profile image
   useEffect(() => {
     if (isAuthenticated) {
-      setNavLinks((prev)=>([
-        ...prev,{ name: 'Status Alerts', href: '/status' },{ name: 'Real-time Data', href: '/realtime-data' },
-        
+      setNavLinks((prev) => ([
+        ...prev, { name: 'Status Alerts', href: '/status' }, { name: 'Real-time Data', href: '/realtime-data' },
+
       ]))
       const fetchUserProfile = async () => {
         try {
@@ -55,9 +65,9 @@ const Navbar = () => {
             const data = await response.json();
             console.log(data)
             setUser(data.user);
-            if(data.user.email=="verigeektech@gmail.com" || data.user.email=="omdaga6@gmail.com"){
-              setNavLinks((prev)=>([
-                ...prev,{ name: 'See contact', href: '/checkcontact' },
+            if (data.user.email == "verigeektech@gmail.com" || data.user.email == "omdaga6@gmail.com") {
+              setNavLinks((prev) => ([
+                ...prev, { name: 'See contact', href: '/checkcontact' },
                 { name: 'Maps', href: '/maps' }
               ]))
             }
@@ -72,7 +82,7 @@ const Navbar = () => {
           console.error('Error fetching user profile:', error);
         }
       };
-      
+
       fetchUserProfile();
     }
   }, [isAuthenticated]);
@@ -89,11 +99,12 @@ const Navbar = () => {
             setAllMachines(data.machines || []);
             console.log(data.machines)
             console.log("Machines fetched:", data.machines);
-            if(data.machines && data.machines.length > 0) {
+            if (data.machines && data.machines.length > 0) {
               console.log("SSSSSSSSSSSSSSSSSSSSSSSSS")
               setValue({
-                name:data.machines[0].name,
-                ip:data.machines[0].id
+                machineName: data.machines[0].machineName,
+                machineCode: data.machines[0].machineCode,
+                machineType: data.machines[0].machineType
               })
               console.log(value)
 
@@ -103,20 +114,22 @@ const Navbar = () => {
           console.error('Error fetching machines:', error);
         }
       };
-      
+
       fetchMachines();
     }
   }, [isAuthenticated]);
 
   // Navigation links
-  
-  function handleMacineClick(machine:any) {
-    // console.log(machine)
+
+  function handleMacineClick(machine: any) {
+    console.log(machine)
     setValue({
-      ip:machine.id,
-      name:machine.name
+      machineCode: machine.machineCode,
+      machineName: machine.machineName,
+      machineType: machine.machineType
 
     })
+    setIsMachinesMenuOpen(false)
   }
 
   // Close menus when clicking outside
@@ -127,27 +140,27 @@ const Navbar = () => {
       const profileMenu = document.getElementById('profile-menu');
       const machinesToggle = document.getElementById('machines-toggle');
       const machinesMenu = document.getElementById('machines-menu');
-      
+
       // Check if the click is outside both the toggle and the menu
       if (
-        profileToggle && 
-        profileMenu && 
-        !profileToggle.contains(event.target as Node) && 
+        profileToggle &&
+        profileMenu &&
+        !profileToggle.contains(event.target as Node) &&
         !profileMenu.contains(event.target as Node)
       ) {
         setIsProfileMenuOpen(false);
       }
 
       if (
-        machinesToggle && 
-        machinesMenu && 
-        !machinesToggle.contains(event.target as Node) && 
+        machinesToggle &&
+        machinesMenu &&
+        !machinesToggle.contains(event.target as Node) &&
         !machinesMenu.contains(event.target as Node)
       ) {
         setIsMachinesMenuOpen(false);
       }
     };
-    
+
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
@@ -173,6 +186,25 @@ const Navbar = () => {
   const handleAddMachine = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAddingMachine(true);
+    console.log(machineId, machinePassword, selectedMachineType)
+    let machineName = machineId;
+    let machineCode = machinePassword;
+    let machineType = selectedMachineType;
+
+    const decryptResult  = decrypt(machineCode);
+    console.log(decryptResult)
+    if(!decryptResult.success) {
+      alert("wrong machine code");
+      setIsAddingMachine(false)
+      return;
+    }
+
+    if(!isValidIPv4(decryptResult.value)){
+      setIsAddingMachine(false)
+      alert("wrong machine code");
+      return;
+    }
+    machineCode = decryptResult.value
 
     try {
       const response = await fetch('/api/machines', {
@@ -181,11 +213,12 @@ const Navbar = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          machineId,
-          password: machinePassword,
+          machineName,
+          machineCode,
+          machineType,
         }),
       });
-
+      
       if (response.ok) {
         const data = await response.json();
         console.log("DATA")
@@ -199,7 +232,7 @@ const Navbar = () => {
           console.log("machines")
           console.log(machinesData.machines)
         }
-        
+
         // Reset form and close modal
         setMachineId('');
         setMachinePassword('');
@@ -207,6 +240,7 @@ const Navbar = () => {
         alert('Machine added successfully!');
       } else {
         const errorData = await response.json();
+        console.log(errorData)
         alert(errorData.message || 'Failed to add machine');
       }
     } catch (error) {
@@ -218,7 +252,8 @@ const Navbar = () => {
   };
 
   // Handle delete machine
-  const handleDeleteMachine = async (machineId: string) => {
+  const handleDeleteMachine = async (machineCode: string) => {
+    console.log(machineCode)
     console.log("INSIDE DELETE FUNCTION")
     if (!confirm('Are you sure you want to delete this machine?')) {
       return;
@@ -228,7 +263,7 @@ const Navbar = () => {
     setIsDeletingMachine(true);
 
     try {
-      const response = await fetch(`/api/machines/${machineId}`, {
+      const response = await fetch(`/api/machines/${machineCode}`, {
         method: 'DELETE',
       });
 
@@ -259,57 +294,65 @@ const Navbar = () => {
     if (!editingMachine) return;
 
     setIsEditingMachine(true);
-    console.log(editingMachine.id)
+    console.log(editingMachine.machineCode)
+    console.log({
+          machineName: editMachineName,
+          machineCode: editMachineIp,
+          email: session?.user?.email,
+          machineType:editMachineType
+        })
     try {
-  const response = await fetch(`/api/machines/${editingMachine.id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      name: editMachineName,
-      ip: editMachineIp,
-      email: session?.user?.email
-    }),
-  });
-  
-  if (response.ok) {
-    const responseData = await response.json();
-    
-    // Update the machine ID in your state if it changed
-    if (responseData.newId) {
-      setMachines(prevMachines => 
-        prevMachines.map(machine => 
-          machine.id === editingMachine.id 
-            ? { ...machine, id: responseData.newId, name: editMachineName, ip: editMachineIp }
-            : machine
-        )
-      );
+      const response = await fetch(`/api/machines/${editingMachine.machineCode}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          machineName: editMachineName,
+          machineCode: editMachineIp,
+          email: session?.user?.email,
+          machineType:editMachineType
+        }),
+      });
+
+      if (response.ok) {
+        const responseData = await response.json();
+
+        // Update the machine ID in your state if it changed
+        if (responseData.newId) {
+          setMachines(prevMachines =>
+            prevMachines.map(machine =>
+              machine.machineCode === editingMachine.machineCode
+                ? { ...machine, id: responseData.newId, name: editMachineName, ip: editMachineIp }
+                : machine
+            )
+          );
+        }
+
+        // Rest of your success handling...
+        setEditingMachine(null);
+        setEditMachineName('');
+        setEditMachineIp('');
+        setIsEditMachineModalOpen(false);
+        alert('Machine updated successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to update machine');
+      }
+    } catch (error) {
+      console.error('Error updating machine:', error);
+      alert('Failed to update machine');
+    } finally {
+      setIsEditingMachine(false);
     }
-    
-    // Rest of your success handling...
-    setEditingMachine(null);
-    setEditMachineName('');
-    setEditMachineIp('');
-    setIsEditMachineModalOpen(false);
-    alert('Machine updated successfully!');
-  } else {
-    const errorData = await response.json();
-    alert(errorData.error || 'Failed to update machine');
-  }
-} catch (error) {
-  console.error('Error updating machine:', error);
-  alert('Failed to update machine');
-} finally {
-  setIsEditingMachine(false);
-}
   };
 
   // Open edit modal
   const openEditModal = (machine: Machine) => {
     setEditingMachine(machine);
-    setEditMachineName(machine.name || '');
-    setEditMachineIp(machine.id);
+    setEditMachineName(machine.machineName || '');
+    setEditMachineIp(machine.machineCode);
+    setEditMachineType(machine.machineType)
     setIsEditMachineModalOpen(true);
   };
 
@@ -356,7 +399,7 @@ const Navbar = () => {
                 <span className="text-xl">V</span>
               </div>
             </motion.div>
-            <motion.span 
+            <motion.span
               className="text-xl font-bold bg-white bg-clip-text text-transparent"
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.2 }}
@@ -368,9 +411,9 @@ const Navbar = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-4">
             {navLinks.map((link) => {
-              const isActive = pathname === link.href || 
-                             (pathname.startsWith(link.href) && link.href !== '/');
-              
+              const isActive = pathname === link.href ||
+                (pathname.startsWith(link.href) && link.href !== '/');
+
               return (
                 <Link
                   key={link.name}
@@ -386,10 +429,9 @@ const Navbar = () => {
                       animate={{ opacity: 1 }}
                     />
                   )}
-                  <span 
-                    className={`relative z-10 font-medium transition-colors duration-300 ${
-                      isActive ? 'text-blue-600' : 'text-white hover:text-blue-200'
-                    }`}
+                  <span
+                    className={`relative z-10 font-medium transition-colors duration-300 ${isActive ? 'text-blue-600' : 'text-white hover:text-blue-200'
+                      }`}
                   >
                     {link.name}
                   </span>
@@ -402,14 +444,14 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-4">
             {!isAuthenticated ? (
               <>
-                <Link 
-                  href="/auth" 
+                <Link
+                  href="/auth"
                   className="text-white hover:text-blue-200 transition-colors px-2 py-1 font-medium"
                 >
                   Sign In
                 </Link>
-                <Link 
-                  href="/auth?tab=signup" 
+                <Link
+                  href="/auth?tab=signup"
                   className="bg-white hover:bg-blue-600 text-blue-600 hover:text-white px-4 py-2 rounded-full transition-colors shadow-sm"
                 >
                   Sign Up
@@ -419,105 +461,22 @@ const Navbar = () => {
               <div className="flex items-center gap-4">
                 {/* Machines Dropdown */}
                 <div className="relative">
-                  <motion.button 
-                    id="machines-toggle"
-                    className="flex items-center gap-2 text-white hover:text-blue-200 transition-colors px-3 py-2 rounded-full hover:bg-white/10"
+
+                  <motion.button
+                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full font-medium transition-colors shadow-sm flex items-center gap-2"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={toggleMachinesMenu}
+                    onClick={() => setIsMachineDetailsOpen(true)}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V8zm0 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z" clipRule="evenodd" />
                     </svg>
-                    <span className="font-medium">Machines ({machines.length})</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${isMachinesMenuOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
+                    Machines ({machines.length})
                   </motion.button>
+
                   
                   {/* Machines Dropdown Menu */}
-                  {isMachinesMenuOpen && (
-                    <motion.div 
-                      id="machines-menu"
-                      className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg overflow-hidden z-50"
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.2, type: "spring", stiffness: 500, damping: 30 }}
-                    >
-                      <div className="bg-gradient-to-r from-blue-500 to-cyan-400 px-4 py-3 text-white">
-                        <h3 className="font-bold">Your Machines</h3>
-                      </div>
-                      
-                      <div className="max-h-64 overflow-y-auto">
-                        {machines.length === 0 ? (
-                          <div className="px-4 py-8 text-center text-gray-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            <p className="text-sm">No machines added yet</p>
-                            <p className="text-xs text-gray-400 mt-1">Click "Add Machine" to get started</p>
-                          </div>
-                        ) : (
-                          machines.map((machine) => (
-                            <div key={machine.id} className="px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
-                              <div className="flex items-center justify-between">
-                                <button 
-                                  onClick={() => handleMacineClick(machine)} 
-                                  className="flex items-center gap-3 flex-1 text-left"
-                                >
-                                  <div className={`w-3 h-3 rounded-full ${getStatusColor(machine.status || 'offline')}`}></div>
-                                  <div>
-                                    <p className="font-medium text-gray-900">{machine.name || `Machine ${machine.id}`}</p>
-                                    <p className="text-xs text-gray-500">IP: {machine.id}</p>
-                                  </div>
-                                </button>
-                                
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-xs px-2 py-1 rounded-full capitalize ${
-                                    machine.status === 'online' ? 'bg-green-100 text-green-800' :
-                                    machine.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-red-100 text-red-800'
-                                  }`}>
-                                    {machine.status || 'offline'}
-                                  </span>
-                                  
-                                  {/* Edit Button */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openEditModal(machine);
-                                    }}
-                                    className="p-1 rounded-full hover:bg-blue-100 tex-600 transition-colors"
-                                    title="Edit machine"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-black" viewBox="0 0 20 20" fill="currentColor">
-                                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                    </svg>
-                                  </button>
-                                  
-                                  {/* Del ete Button */}
-                                  <button
-                                    onClick={(e) => {
-                                      console.log("clicked")
-                                      e.stopPropagation();
-                                      handleDeleteMachine(machine.id);
-                                    }}
-                                    className="p-1 rounded-full hover:bg-red-100 text-red-600 transition-colors"
-                                    title="Delete machine"
-                                    disabled={false}
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
+                  
                 </div>
 
                 {/* Add Machine Button */}
@@ -533,14 +492,16 @@ const Navbar = () => {
                   Add Machine
                 </motion.button>
 
+                {/* Machine Details Button */}
+
                 {/* User's name / welcome message */}
                 <span className="text-white font-medium">
                   Hello, {session?.user?.name?.split(' ')[0] || 'User'}
                 </span>
-                
+
                 {/* User Profile Icon */}
                 <div className="relative">
-                  <motion.div 
+                  <motion.div
                     id="profile-toggle"
                     className="w-10 h-10 bg-white/20 rounded-full cursor-pointer overflow-hidden backdrop-blur-sm border-2 border-white/30"
                     whileHover={{ scale: 1.1 }}
@@ -548,10 +509,10 @@ const Navbar = () => {
                     onClick={toggleProfileMenu}
                   >
                     {profileImageSrc ? (
-                      <Image 
-                        src={profileImageSrc} 
-                        alt={session?.user?.name || 'Profile'} 
-                        width={40} 
+                      <Image
+                        src={profileImageSrc}
+                        alt={session?.user?.name || 'Profile'}
+                        width={40}
                         height={40}
                         className="w-full h-full object-cover"
                       />
@@ -563,10 +524,10 @@ const Navbar = () => {
                       </div>
                     )}
                   </motion.div>
-                  
+
                   {/* Profile Dropdown */}
                   {isProfileMenuOpen && (
-                    <motion.div 
+                    <motion.div
                       id="profile-menu"
                       className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg overflow-hidden z-50"
                       initial={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -577,10 +538,10 @@ const Navbar = () => {
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/50">
                             {profileImageSrc ? (
-                              <Image 
-                                src={profileImageSrc} 
-                                alt={session?.user?.name || 'Profile'} 
-                                width={48} 
+                              <Image
+                                src={profileImageSrc}
+                                alt={session?.user?.name || 'Profile'}
+                                width={48}
                                 height={48}
                                 className="w-full h-full object-cover"
                               />
@@ -598,10 +559,10 @@ const Navbar = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="py-2">
-                        <Link 
-                          href="/profile" 
+                        <Link
+                          href="/profile"
                           className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
                           onClick={() => setIsProfileMenuOpen(false)}
                         >
@@ -610,9 +571,9 @@ const Navbar = () => {
                           </svg>
                           <span>Your Profile</span>
                         </Link>
-                        
-                        <Link 
-                          href="/account/password" 
+
+                        <Link
+                          href="/account/password"
                           className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
                           onClick={() => setIsProfileMenuOpen(false)}
                         >
@@ -621,9 +582,9 @@ const Navbar = () => {
                           </svg>
                           <span>Change Password</span>
                         </Link>
-                        
+
                         <hr className="my-1 border-gray-200" />
-                        
+
                         <button
                           onClick={() => {
                             handleSignOut();
@@ -657,7 +618,8 @@ const Navbar = () => {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <motion.div 
+
+          <motion.div
             className="md:hidden mt-4 bg-white/10 backdrop-blur-sm rounded-lg p-4"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -673,18 +635,18 @@ const Navbar = () => {
                 {link.name}
               </Link>
             ))}
-            
+
             {!isAuthenticated ? (
               <div className="pt-4 space-y-2">
-                <Link 
-                  href="/auth" 
+                <Link
+                  href="/auth"
                   className="block text-center text-white hover:text-blue-200 py-2"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Sign In
                 </Link>
-                <Link 
-                  href="/auth?tab=signup" 
+                <Link
+                  href="/auth?tab=signup"
                   className="block text-center bg-white text-blue-600 py-2 rounded-lg font-medium"
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -692,12 +654,23 @@ const Navbar = () => {
                 </Link>
               </div>
             ) : (
+
               <div className="pt-4 space-y-2">
+                // In the mobile menu section (around line 500), add this after the profile links:
+                <button
+                  onClick={() => {
+                    setIsMachineDetailsOpen(true);
+                    setIsMenuOpen(false);
+                  }}
+                  className="block text-white hover:text-blue-200 py-2"
+                >
+                  Machine Details
+                </button>
                 <div className="text-white font-medium pb-2">
                   Hello, {session?.user?.name?.split(' ')[0] || 'User'}
                 </div>
-                <Link 
-                  href="/profile" 
+                <Link
+                  href="/profile"
                   className="block text-white hover:text-blue-200 py-2"
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -718,126 +691,184 @@ const Navbar = () => {
         )}
       </motion.nav>
 
+      {/* Machine Details Widget */}
+      <MachineDetailsWidget
+        isOpen={isMachineDetailsOpen}
+        onClose={() => setIsMachineDetailsOpen(false)}
+        machines={machines}
+        handleDeleteMachine={handleDeleteMachine}
+        openEditModal = {openEditModal}
+
+      />
       {/* Add Machine Modal */}
       {isAddMachineModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <motion.div 
-            className="bg-white rounded-xl p-6 w-full max-w-md"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2 }}
-          >
-            <h2 className="text-xl text-black font-bold mb-4">Add New Machine</h2>
-            <form onSubmit={handleAddMachine}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Machine name
-                  </label>
-                  <input
-                    type="text"
-                    value={machineId}
-                    onChange={(e) => setMachineId(e.target.value)}
-                    className="w-full text-black px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="name"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ip
-                  </label>
-                  <input
-                    type="text"
-                    value={machinePassword}
-                    onChange={(e) => setMachinePassword(e.target.value)}
-                    className="w-full text-black px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="IP"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsAddMachineModalOpen(false)}
-                  className="flex-1 text-black px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isAddingMachine}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                >
-                  {isAddingMachine ? 'Adding...' : 'Add Machine'}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
+        <AddMachineModal
+          machineId={machineId}
+          machinePassword={machinePassword}
+          selectedMachineType={selectedMachineType}
+          isAddingMachine={isAddingMachine}
+          isAddMachineModalOpen={isAddMachineModalOpen}
+          setMachineId={setMachineId}
+          handleAddMachine={handleAddMachine}
+          setMachinePassword={setMachinePassword}
+          setSelectedMachineType={setSelectedMachineType}
+          setIsAddingMachine={setIsAddingMachine}
+          setIsAddMachineModalOpen={setIsAddMachineModalOpen}
+        />
       )}
 
       {/* Edit Machine Modal */}
       {isEditMachineModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <motion.div 
-            className="bg-white rounded-xl p-6 w-full max-w-md"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2 }}
-          >
-           <h2 className="text-xl font-bold text-black mb-4">Edit Machine</h2>
-
-            <form onSubmit={handleEditMachine}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Machine Name
-                  </label>
-                  <input
-                    type="text"
-                    value={editMachineName}
-                    onChange={(e) => setEditMachineName(e.target.value)}
-                    className="w-full px-3 py-2 border text-black border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., Production Server"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    IP Address
-                  </label>
-                  <input
-                    type="text"
-                    value={editMachineIp}
-                    onChange={(e) => setEditMachineIp(e.target.value)}
-                    className="w-full px-3 py-2 border text-black border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., 192.168.1.100"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsEditMachineModalOpen(false)}
-                  className="flex-1 px-4 py-2 border text-black border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isEditingMachine}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                >
-                  {isEditingMachine ? 'Updating...' : 'Update Machine'}
-                </button>
-              </div>
-            </form>
-          </motion.div>
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <motion.div
+      className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg border border-gray-100"
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: 20 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+    >
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-lg flex items-center justify-center">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Edit Machine</h2>
+            <p className="text-sm text-gray-500">Update machine configuration</p>
+          </div>
         </div>
-      )}
+        <button
+          type="button"
+          onClick={() => setIsEditMachineModalOpen(false)}
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors group"
+        >
+          <svg className="w-5 h-5 text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <form onSubmit={handleEditMachine} className="space-y-6">
+        <div className="space-y-5">
+          <div className="group">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Machine Name
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={editMachineName}
+                onChange={(e) => setEditMachineName(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 
+                         transition-all duration-200 bg-gray-50/50 hover:bg-white hover:border-gray-300"
+                placeholder=""
+                required
+              />
+              <div className="absolute inset-y-0 right-3 flex items-center">
+                <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="group">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Machine Type
+            </label>
+            <div className="relative">
+              <select
+                value={editMachineType || 'doordrishti'}
+                onChange={(e) => setEditMachineType(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 
+                         transition-all duration-200 bg-gray-50/50 hover:bg-white hover:border-gray-300 
+                         appearance-none cursor-pointer"
+                required
+              >
+                <option value="doordrishti">Door Drishti</option>
+                <option value="drishti">Drishti</option>
+                <option value="tarang">Tarang</option>
+                <option value="pravaah">Pravh</option>
+              </select>
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="group">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Machine code
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={editMachineIp}
+                onChange={(e) => setEditMachineIp(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 
+                         transition-all duration-200 bg-gray-50/50 hover:bg-white hover:border-gray-300"
+                placeholder="e.g., 192.168.1.100"
+                title="Please enter a valid code"
+                required
+              />
+              <div className="absolute inset-y-0 right-3 flex items-center">
+                <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
+                </svg>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              fill all the details
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-4 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={() => setIsEditMachineModalOpen(false)}
+            className="flex-1 px-6 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium 
+                     hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 
+                     transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-200"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isEditingMachine}
+            className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl font-medium 
+                     hover:from-blue-700 hover:to-cyan-600 active:from-blue-800 active:to-cyan-700
+                     disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-400 disabled:to-gray-500
+                     transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 
+                     shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30"
+          >
+            {isEditingMachine ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Updating...
+              </span>
+            ) : (
+              'Update Machine'
+            )}
+          </button>
+        </div>
+      </form>
+    </motion.div>
+  </div>
+)}
     </>
   );
 };

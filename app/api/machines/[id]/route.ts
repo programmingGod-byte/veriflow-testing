@@ -18,26 +18,27 @@ export async function PUT(request: Request, context: { params: { id: string } })
     await connectToDatabase();
 
     const body = await request.json();
-    const { name, ip, email } = body;
+    const { machineName, machineCode, email,machineType } = body;
 
     const machineId = context.params.id;  // safer than destructuring if you want to debug
 
     const user = await User.findOne({ email });
+    console.log(user)
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const machine = user.machines.find((m: any) => m.password === machineId);
+    const machine = user.machines.find((m: any) => m.machineCode === machineCode);
     if (!machine) {
       return NextResponse.json({ error: 'Machine not found' }, { status: 404 });
     }
 
-    if (name) machine.name = name;
-    if (ip) machine.password = ip;
-
+    if (machineName) machine.machineName = machineName;
+    if (machineCode) machine.password = machineCode;
+    if(machineType) machine.machineType = machineType; 
     await user.save();
 
-    return NextResponse.json({ message: 'Machine updated successfully', newId: ip });
+    return NextResponse.json({ message: 'Machine updated successfully', newId: machineName });
 
   } catch (error: any) {
     console.error('Error updating machine:', error);
@@ -65,9 +66,10 @@ export async function DELETE(
   try {
     await connectToDatabase();
 
-    const machineId = context.params.id;
+    const machineCode = context.params.id;
     const user = await User.findOne({ email: session.user.email });
-
+    console.log(user)
+    console.log(machineCode)
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -76,7 +78,7 @@ export async function DELETE(
 
     // Remove machine by matching `password` to `machineId`
     user.machines = user.machines.filter(
-      (machine: any) => machine.password !== machineId
+      (machine: any) => machine.machineCode !== machineCode
     );
 
     if (user.machines.length === originalMachineCount) {

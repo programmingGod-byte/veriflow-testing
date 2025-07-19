@@ -39,11 +39,58 @@ const TemperatureChart = () => {
   const [showCustomInputs, setShowCustomInputs] = useState(false);
   const { value, setValue } = useContext(MyContext);
 
+  // Temperature status function
+  const getTemperatureStatus = (temp) => {
+    if (temp < 0) return { status: 'Very Cold', color: 'text-blue-800', bgColor: 'bg-blue-100' };
+    if (temp < 10) return { status: 'Cold', color: 'text-blue-600', bgColor: 'bg-blue-50' };
+    if (temp < 20) return { status: 'Cool', color: 'text-green-600', bgColor: 'bg-green-50' };
+    if (temp < 25) return { status: 'Comfortable', color: 'text-green-700', bgColor: 'bg-green-100' };
+    if (temp < 30) return { status: 'Warm', color: 'text-yellow-600', bgColor: 'bg-yellow-50' };
+    if (temp < 35) return { status: 'Hot', color: 'text-orange-600', bgColor: 'bg-orange-50' };
+    return { status: 'Very Hot', color: 'text-red-700', bgColor: 'bg-red-100' };
+  };
+
+  // CSV Download function
+  const downloadCSV = () => {
+    if (filteredData.length === 0) {
+      alert('No data available to download');
+      return;
+    }
+
+    // Create CSV content
+    const csvHeader = 'Timestamp,Temperature (°C)\n';
+    const csvRows = filteredData.map(item => {
+      const timestamp = item.timestamp.toISOString();
+      return `${timestamp},${item.temperature}`;
+    }).join('\n');
+    
+    const csvContent = csvHeader + csvRows;
+    
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    // Generate filename with date range
+    const startDate = filteredData[0].timestamp.toISOString().split('T')[0];
+    const endDate = filteredData[filteredData.length - 1].timestamp.toISOString().split('T')[0];
+    const filename = `temperature_data_${startDate}_to_${endDate}.csv`;
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   // Fetch temperature data
   const fetchTemperatureData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/temperature?ip=${value.ip}`);
+      const response = await fetch(`/api/temperature?ip=${value.machineCode}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -124,15 +171,21 @@ const TemperatureChart = () => {
     }
   };
 
-  // Initial data fetch
+  // Initial data fetch - FIXED: Only fetch when value.machineCode is available
   useEffect(() => {
-    fetchTemperatureData();
-  }, []);
+    if (value && value.machineCode) {
+      fetchTemperatureData();
+    }
+  }, [value?.machineCode]);
 
   // Filter data when data or timeFilter changes
   useEffect(() => {
     filterData();
   }, [data, timeFilter]);
+
+  // Get current temperature status
+  const currentTemp = filteredData.length > 0 ? filteredData[filteredData.length - 1].temperature : null;
+  const tempStatus = currentTemp !== null ? getTemperatureStatus(currentTemp) : null;
 
   // Chart configuration
   const chartData = {
@@ -140,7 +193,10 @@ const TemperatureChart = () => {
     datasets: [
       {
         label: 'Temperature (°C)',
-        data: filteredData.map(item => item.temperature),
+        data: filteredData.map(item => ({
+          x: item.timestamp,
+          y: item.temperature
+        })),
         borderColor: 'rgb(59, 130, 246)',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         borderWidth: 2,
@@ -175,7 +231,9 @@ const TemperatureChart = () => {
             return `Temperature: ${context.parsed.y.toFixed(2)}°C`;
           },
           title: function(context) {
-            return new Date(context[0].label).toLocaleString();
+            // FIXED: Proper date handling in tooltip
+            const date = new Date(context[0].parsed.x);
+            return date.toLocaleString();
           },
         },
       },
@@ -236,6 +294,59 @@ const TemperatureChart = () => {
   return (
     <div className="w-full max-w-6xl mx-auto p-6">
       <div className="bg-white rounded-lg shadow-lg p-6">
+        
+        {/* Temperature Badges - NEW FEATURE */}
+        <div className="mb-6 flex items-start justify-between">
+          {/* Current Status and Temperature */}
+          {tempStatus && (
+            <div className="flex items-center gap-3">
+              {/* Status Badge */}
+              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${tempStatus.bgColor} ${tempStatus.color}`}>
+                <span>
+                  {tempStatus.status === 'Very Hot' && '🔥'}
+                  {tempStatus.status === 'Hot' && '🌡️'}
+                  {tempStatus.status === 'Warm' && '☀️'}
+                  {tempStatus.status === 'Comfortable' && '😊'}
+                  {tempStatus.status === 'Cool' && '🌤️'}
+                  {tempStatus.status === 'Cold' && '❄️'}
+                  {tempStatus.status === 'Very Cold' && '🧊'}
+                </span>
+                {tempStatus.status}
+              </div>
+              
+              {/* Current Temperature Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                🌡️ {currentTemp.toFixed(1)}°C
+              </div>
+            </div>
+          )}
+          
+          {/* All Temperature Range Badges */}
+          <div className="flex flex-wrap gap-2">
+            {/* <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              🧊 Very Cold (&lt;0°C)
+            </div> */}
+            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
+              ❄️ Cold (0-10°C)
+            </div>
+            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600">
+              🌤️ Cool (10-20°C)
+            </div>
+            {/* <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+              😊 Comfortable (20-25°C)
+            </div> */}
+            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-600">
+              ☀️ Warm (25-30°C)
+            </div>
+            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-600">
+              🌡️ Hot (30-35°C)
+            </div>
+            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+              🔥 Very Hot (&gt;35°C)
+            </div>
+          </div>
+        </div>
+
         {/* Controls */}
         <div className="mb-6 space-y-4">
           <div className="flex flex-wrap items-center gap-4">
@@ -262,6 +373,32 @@ const TemperatureChart = () => {
             >
               Refresh Data
             </button>
+
+            {/* NEW: CSV Download Button */}
+            <button
+  onClick={downloadCSV}
+  disabled={filteredData.length === 0}
+  className={`px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all
+    ${
+      filteredData.length === 0
+        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+        : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md hover:shadow-lg'
+    }`}
+  title={filteredData.length === 0 ? "No data available to download" : "Download filtered data as CSV"}
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="w-5 h-5"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16V4H4zm8 6v6m0 0l-3-3m3 3l3-3" />
+  </svg>
+  Download CSV
+</button>
+
           </div>
 
           {/* Custom date inputs */}

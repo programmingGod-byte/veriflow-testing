@@ -380,9 +380,9 @@ export default function MediaViewer() {
   };
 
   useEffect(() => {
-    if(value.ip.length > 0){
-      console.log("Setting base URL with IP:", value.ip);
-      setBaseUrl(`http://${value.ip}:5000`);
+    if(value.machineCode.length > 0){
+      console.log("Setting base URL with IP:", value.machineCode);
+      setBaseUrl(`http://${value.machineCode}:5000`);
       fetchLatestMedia("image");
     }
   }, [value]);
@@ -401,7 +401,7 @@ export default function MediaViewer() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/media-latest?ip=${value.ip}&type=${type}`);
+      const res = await fetch(`/api/media-latest?ip=${value.machineCode}&type=${type}`);
 
       if (!res.ok) {
         throw new Error(`Failed to fetch latest media: ${res.status} ${res.statusText}`);
@@ -419,7 +419,7 @@ export default function MediaViewer() {
       // Create URL with proper encoding and cache busting
       const mediaEndpoint = type === 'image' ? 'image' : 'video';
       const timestamp = Date.now();
-      const directUrl = `/api/media?ip=${value.ip}&type=${mediaEndpoint}&name=${encodeURIComponent(mediaName)}&t=${timestamp}`;
+      const directUrl = `/api/media?ip=${value.machineCode}&type=${mediaEndpoint}&name=${encodeURIComponent(mediaName)}&t=${timestamp}`;
       
       // Get MIME type from filename
       const mimeType = getMimeType(mediaName);
@@ -445,7 +445,7 @@ export default function MediaViewer() {
     setError(null);
     try {
       const endpoint = type === 'image' ? '/api/photos' : '/api/videos';
-      const response = await fetch(`${endpoint}?ip=${value.ip}`);
+      const response = await fetch(`${endpoint}?ip=${value.machineCode}`);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch media list: ${response.status} ${response.statusText}`);
@@ -476,7 +476,7 @@ export default function MediaViewer() {
       // Create URL with proper encoding and cache busting
       const endpoint = type === 'image' ? 'image' : 'video';
       const timestamp = Date.now();
-      const directUrl = `/api/media?ip=${value.ip}&type=${endpoint}&name=${encodeURIComponent(name)}&t=${timestamp}`;
+      const directUrl = `/api/media?ip=${value.machineCode}&type=${endpoint}&name=${encodeURIComponent(name)}&t=${timestamp}`;
       
       // Test if the URL is accessible (for debugging)
       try {
@@ -538,10 +538,10 @@ export default function MediaViewer() {
 
   // Initial load
   useEffect(() => {
-    if (value.ip.length > 0) {
+    if (value.machineCode.length > 0) {
       fetchLatestMedia(activeTab);
     }
-  }, [activeTab, value.ip]);
+  }, [activeTab, value.machineCode]);
 
   // Cleanup blob URLs (not needed for direct URLs but keeping for consistency)
   useEffect(() => {

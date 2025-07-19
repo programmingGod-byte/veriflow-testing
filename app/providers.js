@@ -3,14 +3,18 @@
 import { SessionProvider } from 'next-auth/react';
 import React, { createContext, useState } from 'react';
 
+// lib/encryption.ts
+
+
 // Create and export the context
 export const MyContext = createContext();
 
 // Create and export the provider component
 export function Providers({ children }) {
   const [value, setValue] = useState({
-    name:"",
-    ip:"",
+    machineName:"",
+    machineCode:"",
+    machineType:"",
   });
   const [user,setUser] = useState([])
   const [allMachines,setAllMachines] = useState([])
@@ -23,3 +27,5 @@ export function Providers({ children }) {
     </SessionProvider>
   );
 }
+
+

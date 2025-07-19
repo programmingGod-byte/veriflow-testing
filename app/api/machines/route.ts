@@ -26,8 +26,9 @@ export async function GET(request:any) {
     // Transform machines data to exclude sensitive information (passwords)
     // and add any additional computed fields
     const machines = user.machines.map(machine => ({
-      id: machine.password,
-      name: machine.name || `Machine ${machine.id}`, // Default name if not set
+      machineCode: machine.machineCode,
+      machineType:machine.machineType,
+      machineName: machine.machineName || `Machine ${machine.id}`, // Default name if not set
       status: machine.status || 'offline', // Default status if not set
       addedAt: machine.addedAt || machine._id.getTimestamp(), // Use creation time if addedAt not available
       longitude:machine.longitude,
@@ -38,6 +39,7 @@ export async function GET(request:any) {
       // type: machine.type,
     }));
 
+    console.log(machines)
     // Return machines data
     return NextResponse.json({
       machines: machines,
@@ -74,10 +76,11 @@ export async function POST(request:any) {
   try {
     // Parse request body
     const body = await request.json();
-    const { machineId, password } = body;
-
+    const { machineName, machineCode,machineType } = body;
+    
+    // const { machineId, password } = body;
     // Validate required fields
-    if (!machineId || !password) {
+    if (!machineName || !machineCode || !machineType) {
       return NextResponse.json(
         { error: 'Machine ID and password are required' }, 
         { status: 400 }
@@ -85,20 +88,14 @@ export async function POST(request:any) {
     }
 
     // Validate machineId format (optional - adjust as needed)
-    if (typeof machineId !== 'string' || machineId.trim().length === 0) {
+    if (typeof machineName !== 'string' || machineName.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Invalid machine ID format' }, 
+        { error: 'Invalid machine name format' }, 
         { status: 400 }
       );
     }
 
-    // Validate password (optional - adjust as needed)
-    if (typeof password !== 'string' || password.length < 4) {
-      return NextResponse.json(
-        { error: 'Password must be at least 4 characters long' }, 
-        { status: 400 }
-      );
-    }
+    
 
     // Connect to database
     await connectToDatabase();
@@ -110,18 +107,19 @@ export async function POST(request:any) {
     }
 
     // Check if machine already exists for this user
-    const existingMachine = user.machines.find(machine => machine.id === machineId.trim());
+    const existingMachine = user.machines.find(machine => machine.machineCode === machineCode.trim());
     if (existingMachine) {
       return NextResponse.json(
-        { error: 'Machine with this ID already exists' }, 
+        { error: 'Machine with this code already exists' }, 
         { status: 409 }
       );
     }
 
     // Create new machine object
     const newMachine = {
-      id: machineId.trim(),
-      password: password,
+      machineName: machineName.trim(),
+      machineCode: machineCode,
+      machineType:machineType
       // You can add additional fields here like:
       // name: body.name || `Machine ${machineId}`,
       // status: 'offline',
@@ -139,7 +137,9 @@ export async function POST(request:any) {
     const responseData = {
       message: 'Machine added successfully',
       machine: {
-        id: newMachine.id,
+        machineName: newMachine.machineName,
+        machineCode:newMachine.machineCode,
+        machineType:newMachine.machineType
         // Include other fields you want to return, but not the password
         // name: newMachine.name,
         // status: newMachine.status,

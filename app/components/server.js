@@ -4,7 +4,7 @@ const csv = require('csv-parser');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-
+const moment = require('moment');
 const app = express();
 
 // Use cors middleware to remove CORS errors
@@ -34,6 +34,7 @@ const readline = require('readline');
  * extracts the combined date and time from the first column, and
  * returns the timestamp as separate date and time fields.
  */
+
 app.get('/depth/timestamp', (req, res) => {
   const csvFilePath = '/home/ec2-user/depth_measurements.csv';
   const timestamps = [];
@@ -291,8 +292,165 @@ app.get('/api/flow-angles', (req, res) => {
 });
 
 
+
+
+/*                   NEWER CODE                 */
+const knownFormats = ['M/D/YY H:mm', 'YYYY-MM-DD HH:mm:ss'];
+
+/**
+ * Try to parse a date using multiple formats
+ */
+function parseDate(raw) {
+  for (const format of knownFormats) {
+    const m = moment(raw, format, true); // strict mode
+    if (m.isValid()) return m;
+  }
+  return null;
+}
+
+// Route 1: past N days
+app.get('/newversion/depth/timestamp/:days', (req, res) => {
+  const csvFilePath = '/home/ec2-user/depth_measurements.csv';
+  const days = parseInt(req.params.days, 10);
+  if (isNaN(days) || days < 1) {
+    return res.status(400).json({ error: 'Invalid number of days' });
+  }
+
+  const thresholdDate = moment().subtract(days, 'days');
+  const results = [];
+
+  const rl = readline.createInterface({
+    input: fs.createReadStream(csvFilePath),
+    crlfDelay: Infinity,
+  });
+
+  let lineCount = 0;
+
+  rl.on('line', (line) => {
+    lineCount++;
+    if (lineCount === 1) return; // Skip header
+
+    const tokens = line.split(',');
+    const rawDate = tokens[0].trim();
+    const parsedDate = parseDate(rawDate);
+
+    if (!parsedDate) {
+      console.warn(`Invalid date format on line ${lineCount}: ${rawDate}`);
+      return;
+    }
+
+    if (parsedDate.isSameOrAfter(thresholdDate)) {
+      const meanDepth = parseFloat(tokens[tokens.length - 1]);
+      results.push({
+        timestamp: parsedDate.format('M/D/YY H:mm'),
+        mean_depth: meanDepth,
+      });
+    }
+  });
+
+  rl.on('close', () => {
+    res.json(results);
+  });
+
+  rl.on('error', (err) => {
+    console.error('Error reading CSV:', err);
+    res.status(500).json({ error: 'Failed to process CSV file' });
+  });
+});
+
+// Route 2: between two timestamps
+app.get('/new/version/timestamp/:time1&:time2', (req, res) => {
+  const csvFilePath = '/home/ec2-user/depth_measurements.csv';
+  const { time1, time2 } = req.params;
+
+  const start = moment(decodeURIComponent(time1), 'YYYY-MM-DD HH:mm', true);
+  const end = moment(decodeURIComponent(time2), 'YYYY-MM-DD HH:mm', true);
+
+  if (!start.isValid() || !end.isValid()) {
+    return res.status(400).json({ error: 'Invalid time format. Use YYYY-MM-DD HH:mm' });
+  }
+
+  const results = [];
+
+  const rl = readline.createInterface({
+    input: fs.createReadStream(csvFilePath),
+    crlfDelay: Infinity,
+  });
+
+  let lineCount = 0;
+
+  rl.on('line', (line) => {
+    lineCount++;
+    if (lineCount === 1) return; // Skip header
+
+    const tokens = line.split(',');
+    const rawDate = tokens[0].trim();
+    const parsedDate = parseDate(rawDate);
+
+    if (!parsedDate) {
+      console.warn(`Invalid date format on line ${lineCount}: ${rawDate}`);
+      return;
+    }
+
+    if (parsedDate.isBetween(start, end, undefined, '[]')) {
+      const meanDepth = parseFloat(tokens[tokens.length - 1]);
+      results.push({
+        timestamp: parsedDate.format('M/D/YY H:mm'),
+        mean_depth: meanDepth,
+      });
+    }
+  });
+
+  rl.on('close', () => {
+    res.json(results);
+  });
+
+  rl.on('error', (err) => {
+    console.error('Error reading CSV:', err);
+    res.status(500).json({ error: 'Failed to process CSV file' });
+  });
+});
+
+
+app.get('/latest-width', (req, res) => {
+  const filePath = "/home/ec2-user/width.csv";
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const lines = content.trim().split('\n').filter(line => line.trim() !== '');
+
+    if (lines.length < 2) {
+      return res.status(404).json({ error: 'Not enough data in CSV' });
+    }
+
+    const lastLine = lines[lines.length - 1];
+    const secondLastLine = lines[lines.length - 2];
+
+    const parseLine = (line) => {
+      const [timestamp, widthStr] = line.trim().split(',');
+      const width = parseFloat(widthStr);
+      return { timestamp, width };
+    };
+
+    const last = parseLine(lastLine);
+    const secondLast = parseLine(secondLastLine);
+
+    if (!last.timestamp || isNaN(last.width) || !secondLast.timestamp || isNaN(secondLast.width)) {
+      return res.status(400).json({ error: 'Invalid CSV format' });
+    }
+
+    res.json({ last, secondLast });
+
+  } catch (err) {
+    console.error('Error reading CSV:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
 // Start the server on port 5000
 const PORT = 5000;
 app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
 });
+
