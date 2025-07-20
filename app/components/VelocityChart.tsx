@@ -43,7 +43,7 @@ type TimeSelectionMode = 'dropdown' | 'manual' | 'range';
 const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setMaxVelocity, setMeanVelocityIncrease, setMaxVelocityIncrease }: VelocityChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart.Chart | null>(null);
-  const { value, setValue } = useContext(MyContext);
+  const { value, setValue,iseUserAdmin } = useContext(MyContext);
   const [data, setData] = useState<VelocityData[]>([]);
   const [filteredData, setFilteredData] = useState<VelocityData[]>([]);
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
@@ -88,6 +88,33 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
     return dateStr;
   };
 
+
+const downloadCSV = () => {
+  if (filteredTimeSeriesData.length === 0) {
+    alert('No data available to download');
+    return;
+  }
+  console.log(filteredTimeSeriesData)
+
+  // Create CSV content
+  const csvHeaders = 'timestamp,velocity\n';
+  const csvContent = filteredTimeSeriesData
+    .map(item => `${item.timestamp},${item.meanVelocity}`)
+    .join('\n');
+
+  const fullCSV = csvHeaders + csvContent;
+
+  // Create blob and download
+  const blob = new Blob([fullCSV], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `velocity_data_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
   // Function to format date from input (DD-MM-YYYY)
   const formatDateFromInput = (dateStr: string) => {
     if (!dateStr) return '';
@@ -735,7 +762,11 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
   return (
     <div className="space-y-6">
       {/* Velocity Profile Chart */}
-      <motion.div
+      
+      <>
+      {
+        iseUserAdmin && (
+          <motion.div
         className="relative w-full bg-white rounded-lg overflow-hidden shadow-sm border border-slate-100"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -893,7 +924,20 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
         </div>
       </motion.div>
 
+        )
+      }
+      </>
       {/* Time Series Chart */}
+      <>
+      <button
+  onClick={downloadCSV}
+  className="inline-flex items-center px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+>
+  
+  Download CSV
+</button>
+
+      </>
       <motion.div
         className="relative w-full bg-white rounded-lg overflow-hidden shadow-sm border border-slate-100"
         initial={{ opacity: 0, y: 20 }}

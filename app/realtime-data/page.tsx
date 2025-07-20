@@ -257,7 +257,7 @@ export default function RealtimeDataPage() {
         {/* Key stats */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="current Depth"
+            title="Depth"
             value={currentDepth}
             unit="m"
             icon={

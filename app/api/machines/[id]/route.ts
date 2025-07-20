@@ -27,7 +27,8 @@ export async function PUT(request: Request, context: { params: { id: string } })
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-
+    console.log(user.machines)
+    console.log(machineCode)
     const machine = user.machines.find((m: any) => m.machineCode === machineCode);
     if (!machine) {
       return NextResponse.json({ error: 'Machine not found' }, { status: 404 });

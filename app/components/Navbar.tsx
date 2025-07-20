@@ -23,7 +23,7 @@ function isValidIPv4(ip: string): boolean {
 }
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { value, setValue, user, setUser, setAllMachines } = useContext(MyContext);
+  const { value, setValue, user, setUser, setAllMachines ,iseUserAdmin,setIsUserAdmin} = useContext(MyContext);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isMachinesMenuOpen, setIsMachinesMenuOpen] = useState(false);
   const [isAddMachineModalOpen, setIsAddMachineModalOpen] = useState(false);
@@ -66,6 +66,7 @@ const Navbar = () => {
             console.log(data)
             setUser(data.user);
             if (data.user.email == "verigeektech@gmail.com" || data.user.email == "omdaga6@gmail.com") {
+              setIsUserAdmin(true);
               setNavLinks((prev) => ([
                 ...prev, { name: 'See contact', href: '/checkcontact' },
                 { name: 'Maps', href: '/maps' }
@@ -292,12 +293,22 @@ const Navbar = () => {
   const handleEditMachine = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingMachine) return;
-
+     let decryption = decrypt(editMachineIp);
+        if(!decryption.success){
+          alert('Invalid Machine code Address');
+          return;
+        }
+    
+        if(!isValidIPv4(decryption.value)){
+          alert('Invalid Machine code Address');
+          return;
+        } 
+      
     setIsEditingMachine(true);
     console.log(editingMachine.machineCode)
     console.log({
           machineName: editMachineName,
-          machineCode: editMachineIp,
+          machineCode: decryption.value,
           email: session?.user?.email,
           machineType:editMachineType
         })
@@ -309,7 +320,7 @@ const Navbar = () => {
         },
         body: JSON.stringify({
           machineName: editMachineName,
-          machineCode: editMachineIp,
+          machineCode: decryption.value,
           email: session?.user?.email,
           machineType:editMachineType
         }),
@@ -351,7 +362,7 @@ const Navbar = () => {
   const openEditModal = (machine: Machine) => {
     setEditingMachine(machine);
     setEditMachineName(machine.machineName || '');
-    setEditMachineIp(machine.machineCode);
+    setEditMachineIp(encrypt(machine.machineCode));
     setEditMachineType(machine.machineType)
     setIsEditMachineModalOpen(true);
   };

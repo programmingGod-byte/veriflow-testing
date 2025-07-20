@@ -7,6 +7,7 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -15,7 +16,7 @@ import {
   ChartData
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { Calendar, Clock, RefreshCw, AlertTriangle, Droplets, TrendingUp, Activity, Wifi, WifiOff, ChevronDown, Download } from 'lucide-react';
+import { Calendar, Clock, RefreshCw, AlertTriangle, Droplets, TrendingUp, Activity, Wifi, WifiOff, ChevronDown, Download, CloudRain } from 'lucide-react';
 import { MyContext } from '../providers';
 
 // Register Chart.js components
@@ -24,6 +25,7 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -53,14 +55,75 @@ const formatDateForAPI = (date: Date) => {
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 };
 
-// CSV export function
-const exportToCSV = (data, filename) => {
-  const csvHeaders = ['Timestamp', 'Date', 'Time', 'Water Depth (m)', 'Status'];
+// Generate mock rainfall data
+const generateMockRainfallData = (startDate, endDate, interval = 30) => {
+  const data = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
   
-  const csvData = data.map(item => {
+  // Ensure we start from 00:00
+  start.setHours(0, 0, 0, 0);
+  
+  let current = new Date(start);
+  
+  while (current <= end) {
+    // Generate realistic rainfall patterns
+    let rainfall = 0;
+    const hour = current.getHours();
+    const random = Math.random();
+    
+    // Higher probability of rain in early morning and evening
+    if (hour >= 2 && hour <= 6) {
+      rainfall = random < 0.3 ? Math.random() * 15 + 5 : 0; // 30% chance, 5-20mm
+    } else if (hour >= 16 && hour <= 20) {
+      rainfall = random < 0.4 ? Math.random() * 25 + 3 : 0; // 40% chance, 3-28mm
+    } else {
+      rainfall = random < 0.15 ? Math.random() * 10 + 1 : 0; // 15% chance, 1-11mm
+    }
+    
+    // Occasionally have heavy rain periods
+    if (random < 0.05) {
+      rainfall = Math.random() * 40 + 20; // 5% chance of heavy rain (20-60mm)
+    }
+    
+    data.push({
+      timestamp: current.toLocaleString('en-US', { 
+        month: '2-digit', 
+        day: '2-digit', 
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false 
+      }).replace(',', ''),
+      rainfall: parseFloat(rainfall.toFixed(1)),
+      parsedDate: new Date(current)
+    });
+    
+    // Increment by interval minutes
+    current = new Date(current.getTime() + interval * 60 * 1000);
+  }
+  
+  return data;
+};
+
+// CSV export function
+const exportToCSV = (waterData, rainfallData, filename) => {
+  const csvHeaders = ['Timestamp', 'Date', 'Time', 'Water Depth (m)', 'Rainfall (mm)', 'Status'];
+  
+  // Create a map for quick rainfall lookup
+  const rainfallMap = new Map();
+  rainfallData.forEach(item => {
+    const timeKey = item.parsedDate.getTime();
+    rainfallMap.set(timeKey, item.rainfall);
+  });
+  
+  const csvData = waterData.map(item => {
     const date = item.parsedDate;
     const dateStr = date.toLocaleDateString('en-US');
     const timeStr = date.toLocaleTimeString('en-US');
+    
+    // Find closest rainfall data
+    const rainfall = rainfallMap.get(date.getTime()) || 0;
     
     let status = 'Normal';
     if (item.meanDepth >= 1.7) status = 'ALARM';
@@ -71,6 +134,7 @@ const exportToCSV = (data, filename) => {
       dateStr,
       timeStr,
       item.meanDepth.toFixed(3),
+      rainfall.toFixed(1),
       status
     ];
   });
@@ -101,6 +165,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
   const [customEndTime, setCustomEndTime] = useState('');
   const [useCustomRange, setUseCustomRange] = useState(false);
   const [data, setData] = useState([]);
+  const [rainfallData, setRainfallData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -116,7 +181,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
   const ALERT_LEVEL = 1.3;
   const ALARM_LEVEL = 1.7;
   
-  // Time range options (updated with hour options)
+  // Time range options
   const timeRangeOptions = [
     { value: '1h', label: '1 Hour', hours: 1 },
     { value: '2h', label: '2 Hours', hours: 2 },
@@ -131,8 +196,8 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
     { value: 'custom', label: 'Custom Range', days: 0 }
   ];
   
-  // API Base URL - Update this with your actual API base URL
-  let API_BASE_URL = 'https://your-api-domain.com'; // Replace with your actual API URL
+  // API Base URL
+  let API_BASE_URL = 'https://your-api-domain.com';
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -162,7 +227,6 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       setError('');
       setApiStatus('connecting');
       
-      // Calculate start and end times for hour ranges
       const now = new Date();
       const startTime = new Date(now.getTime() - (hours * 60 * 60 * 1000));
       
@@ -192,7 +256,11 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       // Sort by date
       const sortedData = transformedData.sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
       
+      // Generate mock rainfall data for the same period
+      const mockRainfall = generateMockRainfallData(startTime, now);
+      
       setData(sortedData);
+      setRainfallData(mockRainfall);
       setLastUpdated(new Date());
       setApiStatus('connected');
       
@@ -230,7 +298,13 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       // Sort by date
       const sortedData = transformedData.sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
       
+      // Generate mock rainfall data for the same period
+      const now = new Date();
+      const startTime = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+      const mockRainfall = generateMockRainfallData(startTime, now);
+      
       setData(sortedData);
+      setRainfallData(mockRainfall);
       setLastUpdated(new Date());
       setApiStatus('connected');
       
@@ -253,7 +327,6 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       const startFormatted = formatDateForAPI(startDateTime);
       const endFormatted = formatDateForAPI(endDateTime);
       
-      // URL encode the datetime parameters
       const encodedStart = encodeURIComponent(startFormatted);
       const encodedEnd = encodeURIComponent(endFormatted);
       let uri = `/api/newversion/depth/range?start=${encodeURIComponent(startFormatted)}&end=${encodeURIComponent(endFormatted)}&ip=${context.value.machineCode}`
@@ -276,7 +349,11 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       // Sort by date
       const sortedData = transformedData.sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
       
+      // Generate mock rainfall data for the same period
+      const mockRainfall = generateMockRainfallData(startDateTime, endDateTime);
+      
       setData(sortedData);
+      setRainfallData(mockRainfall);
       setLastUpdated(new Date());
       setApiStatus('connected');
       
@@ -299,21 +376,20 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
     setIsDownloading(true);
     
     try {
-      // Generate filename based on current selection
-      let filename = 'water_level_data';
+      let filename = 'water_level_rainfall_data';
       const now = new Date();
-      const timestamp = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const timestamp = now.toISOString().split('T')[0];
       
       if (useCustomRange && customStartDate && customEndDate) {
-        filename = `water_level_${customStartDate}_to_${customEndDate}_${timestamp}.csv`;
+        filename = `water_level_rainfall_${customStartDate}_to_${customEndDate}_${timestamp}.csv`;
       } else {
         const selectedOption = timeRangeOptions.find(opt => opt.value === timeRange);
         if (selectedOption) {
-          filename = `water_level_${selectedOption.label.replace(' ', '_').toLowerCase()}_${timestamp}.csv`;
+          filename = `water_level_rainfall_${selectedOption.label.replace(' ', '_').toLowerCase()}_${timestamp}.csv`;
         }
       }
       
-      exportToCSV(data, filename);
+      exportToCSV(data, rainfallData, filename);
       
     } catch (error) {
       console.error('Error downloading CSV:', error);
@@ -325,7 +401,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
   
   // Load initial data
   useEffect(() => {
-    fetchDataByDays(1); // Load 1 day of data initially
+    fetchDataByDays(1);
   }, []);
   
   // Update data when time range changes
@@ -373,13 +449,19 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
     
     const depths = data.map(d => d.meanDepth);
     const maxDepth = Math.max(...depths);
-    
     const minDepth = Math.min(...depths);
     const avgDepth = depths.reduce((a, b) => a + b, 0) / depths.length;
     const currentDepth = depths[depths.length - 1];
-    setCurrentDepth(currentDepth.toFixed(2));
+    if (setCurrentDepth) {
+        setCurrentDepth(currentDepth.toFixed(2));
+    }
     const alertCount = depths.filter(d => d >= ALERT_LEVEL && d < ALARM_LEVEL).length;
     const alarmCount = depths.filter(d => d >= ALARM_LEVEL).length;
+    
+    // Rainfall statistics
+    const rainfalls = rainfallData.map(d => d.rainfall);
+    const totalRainfall = rainfalls.reduce((a, b) => a + b, 0);
+    const maxRainfall = rainfalls.length > 0 ? Math.max(...rainfalls) : 0;
     
     return {
       current: currentDepth,
@@ -388,197 +470,221 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       average: avgDepth,
       alertCount,
       alarmCount,
-      totalReadings: data.length
+      totalReadings: data.length,
+      totalRainfall,
+      maxRainfall
     };
   };
   
-  // Create enhanced gradient for water effect (dark orange at bottom, light at top)
-  const createWaterGradient = (ctx: CanvasRenderingContext2D, chartArea: any) => {
-    const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-    
-    // Enhanced orange gradient: dark at bottom, light at top
-    gradient.addColorStop(0, 'rgba(194, 65, 12, 0.4)');    // Dark orange at bottom
-    gradient.addColorStop(0.2, 'rgba(234, 88, 12, 0.3)');  // Medium-dark orange
-    gradient.addColorStop(0.4, 'rgba(249, 115, 22, 0.2)'); // Medium orange
-    gradient.addColorStop(0.6, 'rgba(251, 146, 60, 0.1)'); // Medium-light orange
-    gradient.addColorStop(0.8, 'rgba(253, 186, 116, 0.1)'); // Light orange
-    gradient.addColorStop(1, 'rgba(254, 215, 170, 0)');   // Very light orange at top
-    
-    return gradient;
-  };
-  
-  // Chart configuration with diagonal timestamp labels
-  // Updated chartOptions with tooltip filter
-const chartOptions: ChartOptions<'line'> = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: false
-    },
-    tooltip: {
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      titleColor: '#1f2937',
-      bodyColor: '#1f2937',
-      borderColor: '#e5e7eb',
-      borderWidth: 1,
-      cornerRadius: 8,
-      displayColors: false,
-      // Filter tooltip to only show the water depth data (first dataset)
-      filter: function(tooltipItem) {
-        return tooltipItem.datasetIndex === 0; // Only show tooltip for the first dataset (Water Depth)
+  // Chart configuration to match the reference image style
+  const chartOptions: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: {
+          usePointStyle: true,
+          pointStyle: 'circle',
+          padding: 20,
+          font: {
+            size: 12,
+            weight: 'bold'
+          }
+        }
       },
-      callbacks: {
-        title: (context) => {
-          const dataPoint = data[context[0].dataIndex];
-          return `${dataPoint.parsedDate.toLocaleDateString()} at ${dataPoint.parsedDate.toLocaleTimeString()}`;
+      tooltip: {
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        titleColor: '#1f2937',
+        bodyColor: '#1f2937',
+        borderColor: '#e5e7eb',
+        borderWidth: 1,
+        cornerRadius: 8,
+        displayColors: true,
+        callbacks: {
+          title: (context) => {
+            const dataPoint = data[context[0].dataIndex];
+            if (dataPoint) {
+              return `${dataPoint.parsedDate.toLocaleDateString()} at ${dataPoint.parsedDate.toLocaleTimeString()}`;
+            }
+            return '';
+          },
+          label: (context) => {
+            if (context.dataset.label === 'Water Level') {
+              const depth = context.parsed.y;
+              let status = 'Normal';
+              if (depth >= ALARM_LEVEL) status = 'ALARM';
+              else if (depth >= ALERT_LEVEL) status = 'ALERT';
+              return `Water Level: ${depth.toFixed(3)}m (${status})`;
+            } else if (context.dataset.label === 'Rainfall') {
+              return `Rainfall: ${context.parsed.y.toFixed(1)}mm`;
+            }
+            return '';
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        display: true,
+        title: {
+          display: true,
+          text: 'Time',
+          color: '#374151',
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
         },
-        label: (context) => {
-          const depth = context.parsed.y;
-          let status = 'Normal';
-          if (depth >= ALARM_LEVEL) status = 'ALARM';
-          else if (depth >= ALERT_LEVEL) status = 'ALERT';
-          
-          return [
-            `Water Depth: ${depth.toFixed(3)}m`,
-            `Alert Depth: ${ALERT_LEVEL.toFixed(1)}m`,
-            `Alarm Depth: ${ALARM_LEVEL.toFixed(1)}m`,
-            `Status: ${status}`
-          ];
+        ticks: {
+          color: '#6b7280',
+          maxTicksLimit: 12,
+          maxRotation: 0,
+          minRotation: 0
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.05)',
+          drawBorder: false,
         }
-      }
-    }
-  },
-  scales: {
-    x: {
-      display: true,
-      title: {
+      },
+      y: {
+        type: 'linear',
         display: true,
-        text: 'Time',
-        color: '#6b7280',
-        font: {
-          size: 12,
-          weight: 'bold'
+        position: 'left',
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Water Level (m)',
+          color: '#0b5ed7',
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        },
+        ticks: {
+          color: '#0b5ed7',
+          callback: function(value) {
+            return value.toFixed(1) + 'm';
+          }
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)',
         }
       },
-      ticks: {
-        color: '#6b7280',
-        maxTicksLimit: 10,
-        maxRotation: 45, // Diagonal labels
-        minRotation: 45  // Ensure diagonal rotation
-      },
-      grid: {
-        color: 'rgba(229, 231, 235, 0.5)'
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        beginAtZero: true,
+        max: 60, // Adjust as needed for typical rainfall values
+        title: {
+          display: true,
+          text: 'Rainfall (mm)',
+          color: '#15a3c9',
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        },
+        ticks: {
+          color: '#15a3c9',
+          callback: function(value) {
+            return value + 'mm';
+          }
+        },
+        grid: {
+          drawOnChartArea: false, // Prevents grid lines from this axis cluttering the chart
+        }
       }
     },
-    y: {
-      display: true,
-      beginAtZero: true,
-      title: {
-        display: true,
-        text: 'Water Depth (m)',
-        color: '#6b7280',
-        font: {
-          size: 12,
-          weight: 'bold'
-        }
+    elements: {
+      line: {
+        tension: 0.4 // Smoother curve
       },
-      ticks: {
-        color: '#6b7280',
-        callback: function(value) {
-          return value + 'm';
-        }
-      },
-      grid: {
-        color: 'rgba(229, 231, 235, 0.5)'
+      point: {
+        radius: 0, // Hide points by default
+        hoverRadius: 5
       }
-    }
-  },
-  elements: {
-    line: {
-      tension: 0.4,
-      borderWidth: 3
     },
-    point: {
-      radius: 2,
-      hoverRadius: 4,
-      borderWidth: 2,
-      backgroundColor: '#ffffff'
+    interaction: {
+      intersect: false,
+      mode: 'index'
     }
-  },
-  interaction: {
-    intersect: false,
-    mode: 'index'
-  }
-};
-  // Prepare chart data with enhanced timestamp formatting
+  };
+
+  // Prepare chart data with gradient
   const chartData: ChartData<'line'> = {
     labels: data.map(d => {
       const date = d.parsedDate;
-      // Always show both date and time for better visibility
-      const dateStr = date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: '2-digit'
-      });
-      const timeStr = date.toLocaleTimeString('en-US', { 
+      return date.toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit',
         hour12: false
       });
-      return `${dateStr} ${timeStr}`;
     }),
     datasets: [
+      // Water Level Line
       {
-        label: 'Water Depth',
+        type: 'line' as const,
+        label: 'Water Level',
         data: data.map(d => d.meanDepth),
-        borderColor: '#ea580c', // Darker orange border
-        backgroundColor: (context) => {
-          const chart = context.chart;
-          const { ctx, chartArea } = chart;
-          if (!chartArea) return 'rgba(194, 65, 12, 0.4)';
-          return createWaterGradient(ctx, chartArea);
-        },
+        borderColor: '#0b5ed7',
+        borderWidth: 3,
+        pointRadius: 2,
+        pointBackgroundColor: '#0b5ed7',
         fill: true,
-        pointBackgroundColor: data.map(d => {
-          if (d.meanDepth >= ALARM_LEVEL) return '#dc2626';
-          if (d.meanDepth >= ALERT_LEVEL) return '#f59e0b';
-          return '#10b981';
-        }),
-        pointBorderColor: data.map(d => {
-          if (d.meanDepth >= ALARM_LEVEL) return '#dc2626';
-          if (d.meanDepth >= ALERT_LEVEL) return '#f59e0b';
-          return '#10b981';
-        }),
-        pointRadius: data.map(d => {
-          if (d.meanDepth >= ALARM_LEVEL) return 3;
-          if (d.meanDepth >= ALERT_LEVEL) return 2;
-          return 2;
-        })
+        backgroundColor: (context) => {
+            const chart = context.chart;
+            const {ctx, chartArea} = chart;
+            if (!chartArea) {
+                // This case happens on initial render or resizing
+                return null;
+            }
+            const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+            gradient.addColorStop(0, 'rgba(11, 94, 215, 0.5)');
+            gradient.addColorStop(0.5, 'rgba(11, 94, 215, 0.1)');
+            gradient.addColorStop(1, 'rgba(11, 94, 215, 0)');
+            return gradient;
+        },
+        yAxisID: 'y'
       },
-      // Alert threshold line
+      // Alert Level Line
       {
+        type: 'line' as const,
         label: 'Alert Level',
         data: data.map(() => ALERT_LEVEL),
         borderColor: '#f59e0b',
-        backgroundColor: 'transparent',
         borderWidth: 2,
-        borderDash: [10, 5],
+        borderDash: [5, 5],
         pointRadius: 0,
         fill: false,
-        tension: 0
+        yAxisID: 'y'
       },
-      // Alarm threshold line
+      // Alarm Level Line
       {
+        type: 'line' as const,
         label: 'Alarm Level',
         data: data.map(() => ALARM_LEVEL),
         borderColor: '#dc2626',
-        backgroundColor: 'transparent',
         borderWidth: 2,
-        borderDash: [10, 5],
+        borderDash: [5, 5],
         pointRadius: 0,
         fill: false,
-        tension: 0
+        yAxisID: 'y'
+      },
+      // Rainfall Bars
+      {
+        type: 'bar' as const,
+        label: 'Rainfall',
+        data: rainfallData.map(d => d.rainfall),
+        backgroundColor: 'rgba(21, 163, 201, 0.6)',
+        borderColor: 'rgba(21, 163, 201, 1)',
+        borderWidth: 1,
+        borderRadius: 2,
+        yAxisID: 'y1',
+        barThickness: 'flex',
+        maxBarThickness: 8,
       }
     ]
   };
@@ -613,13 +719,12 @@ const chartOptions: ChartOptions<'line'> = {
               <Droplets className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Water Level Monitor</h1>
-              <p className="text-sm text-gray-600">Real-time water depth monitoring system</p>
+              <h1 className="text-2xl font-bold text-gray-900">Water Level & Rainfall Monitor</h1>
+              <p className="text-sm text-gray-600">Real-time monitoring system with rainfall data</p>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
-            {/* Download CSV Button */}
             <button
               onClick={handleDownloadCSV}
               disabled={loading || data.length === 0 || isDownloading}
@@ -642,7 +747,7 @@ const chartOptions: ChartOptions<'line'> = {
         
         {/* Statistics Cards */}
         {statistics && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
@@ -656,233 +761,153 @@ const chartOptions: ChartOptions<'line'> = {
             <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-green-600">Average</p>
+                  <p className="text-sm font-medium text-green-600">Average Level</p>
                   <p className="text-2xl font-bold text-green-900">{statistics.average.toFixed(3)}m</p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-green-600" />
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200 shadow-sm">
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 border border-emerald-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-orange-600">Alert Events</p>
-                  <p className="text-2xl font-bold text-orange-900">{statistics.alertCount}</p>
+                  <p className="text-sm font-medium text-emerald-600">Total Rainfall</p>
+                  <p className="text-2xl font-bold text-emerald-900">{statistics.totalRainfall.toFixed(1)}mm</p>
                 </div>
-                <AlertTriangle className="w-8 h-8 text-orange-600" />
+                <CloudRain className="w-8 h-8 text-emerald-600" />
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border border-red-200 shadow-sm">
+            <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-lg p-4 border border-teal-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-red-600">Alarm Events</p>
-                  <p className="text-2xl font-bold text-red-900">{statistics.alarmCount}</p>
+                  <p className="text-sm font-medium text-teal-600">Max Rainfall (30min)</p>
+                  <p className="text-2xl font-bold text-teal-900">{statistics.maxRainfall.toFixed(1)}mm</p>
                 </div>
-                <AlertTriangle className="w-8 h-8 text-red-600" />
+                <CloudRain className="w-8 h-8 text-teal-600" />
+              </div>
+            </div>
+            
+            <div className={`${currentStatus.bgColor} rounded-lg p-4 border ${currentStatus.borderColor} shadow-sm`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-sm font-medium ${currentStatus.textColor}`}>Current Status</p>
+                  <p className={`text-2xl font-bold ${currentStatus.textColor}`}>{currentStatus.status}</p>
+                </div>
+                <AlertTriangle className={`w-8 h-8 ${currentStatus.textColor}`} />
               </div>
             </div>
           </div>
         )}
       </div>
-      
-      {/* Controls */}
+
+      {/* Chart Section */}
       <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-blue-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Time Range Selection</h3>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Quick Time Range */}
-          <div>
-            <div className="flex items-center gap-4 mb-3">
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <input
-                  type="radio"
-                  checked={!useCustomRange}
-                  onChange={() => setUseCustomRange(false)}
-                  className="text-blue-600 focus:ring-blue-500"
-                />
-                Quick Select
-              </label>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <input
-                  type="radio"
-                  checked={useCustomRange}
-                  onChange={() => setUseCustomRange(true)}
-                  className="text-blue-600 focus:ring-blue-500"
-                />
-                Custom Range
-              </label>
+        {/* Controls */}
+        <div className="flex flex-col md:flex-row items-center justify-between mb-4 gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            {apiStatus === 'connected' && <Wifi className="w-5 h-5 text-green-600" />}
+            {apiStatus === 'error' && <WifiOff className="w-5 h-5 text-red-600" />}
+            {apiStatus === 'connecting' && <Wifi className="w-5 h-5 text-yellow-500 animate-pulse" />}
+            <span>
+              {apiStatus === 'connected' ? `Connected. Last updated: ${lastUpdated?.toLocaleTimeString()}` : apiStatus === 'error' ? 'Connection Error' : 'Connecting...'}
+            </span>
+          </div>
+          
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            {/* Time Range Dropdown */}
+            <div ref={dropdownRef} className="relative">
+              <button 
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center justify-between w-48 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+              >
+                <span>{useCustomRange ? 'Custom Range' : selectedOption?.label || 'Select Range'}</span>
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              {dropdownOpen && (
+                <div className="absolute z-10 mt-1 w-48 bg-white rounded-md shadow-lg border">
+                  {timeRangeOptions.map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        if (option.value === 'custom') {
+                          setUseCustomRange(true);
+                        } else {
+                          setUseCustomRange(false);
+                          setTimeRange(option.value);
+                        }
+                        setDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             
-            {!useCustomRange && (
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="w-full px-4 py-2 text-left bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
-                >
-                  <span>{selectedOption?.label || 'Select Time Range'}</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-                
-                {dropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-                    {timeRangeOptions.filter(opt => opt.value !== 'custom').map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => {
-                          setTimeRange(option.value);
-                          setDropdownOpen(false);
-                        }}
-                        className="w-full px-4 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none transition-colors"
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+            {/* Custom Date Inputs */}
+            {useCustomRange && (
+              <div className="flex flex-col sm:flex-row gap-2 items-center p-2 bg-gray-50 rounded-lg border">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-2 py-1 border rounded-md text-sm"
+                />
+                <input
+                  type="time"
+                  value={customStartTime}
+                  onChange={(e) => setCustomStartTime(e.target.value)}
+                  className="px-2 py-1 border rounded-md text-sm"
+                />
+                <span className="text-gray-500">-</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-2 py-1 border rounded-md text-sm"
+                />
+                <input
+                  type="time"
+                  value={customEndTime}
+                  onChange={(e) => setCustomEndTime(e.target.value)}
+                  className="px-2 py-1 border rounded-md text-sm"
+                />
               </div>
             )}
           </div>
-          
-          {/* Custom Date Range */}
-          {useCustomRange && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                  <input
-                    type="time"
-                    value={customStartTime}
-                    onChange={(e) => setCustomStartTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                  <input
-                    type="time"
-                    value={customEndTime}
-                    onChange={(e) => setCustomEndTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+        </div>
+        
+        {/* Chart Area */}
+        <div className="relative h-[500px] w-full bg-gray-50/50 p-4 rounded-lg border border-gray-200">
+          {loading ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm">
+              <div className="text-center">
+                <RefreshCw className="w-8 h-8 mx-auto text-blue-600 animate-spin" />
+                <p className="mt-2 text-lg font-semibold text-gray-700">Loading Data...</p>
               </div>
             </div>
+          ) : error ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-red-50/50">
+              <div className="text-center">
+                <AlertTriangle className="w-10 h-10 mx-auto text-red-600" />
+                <p className="mt-2 text-lg font-semibold text-red-700">Error</p>
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            </div>
+          ) : data.length === 0 ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <Activity className="w-10 h-10 mx-auto text-gray-400" />
+                <p className="mt-2 text-lg font-semibold text-gray-500">No data available for the selected range.</p>
+              </div>
+            </div>
+          ) : (
+            <Line ref={chartRef} options={chartOptions} data={chartData} />
           )}
         </div>
-        
-        {/* Status and Last Updated */}
-        <div className="mt-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${currentStatus.bgColor} ${currentStatus.borderColor} border`}>
-              {apiStatus === 'connected' ? (
-                <Wifi className={`w-4 h-4 ${currentStatus.textColor}`} />
-              ) : (
-                <WifiOff className="w-4 h-4 text-red-500" />
-              )}
-              <span className={`text-sm font-medium ${currentStatus.textColor}`}>
-                Status: {currentStatus.status}
-              </span>
-            </div>
-            
-            {lastUpdated && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Clock className="w-4 h-4" />
-                Last updated: {lastUpdated.toLocaleTimeString()}
-              </div>
-            )}
-          </div>
-          
-          <div className="text-sm text-gray-600">
-            {data.length > 0 && `${data.length} data points`}
-          </div>
-        </div>
-      </div>
-      
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-          <div>
-            <h4 className="text-sm font-medium text-red-800">Connection Error</h4>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
-          </div>
-        </div>
-      )}
-      
-      {/* Chart */}
-      <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-blue-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-md">
-              <TrendingUp className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">Water Depth Trend</h2>
-              <p className="text-sm text-gray-600">
-                {useCustomRange && customStartDate && customEndDate
-                  ? `Custom range: ${customStartDate} to ${customEndDate}`
-                  : selectedOption?.label && `Last ${selectedOption.label.toLowerCase()}`}
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span className="text-gray-600">Normal</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-              <span className="text-gray-600">Alert (≥1.3m)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <span className="text-gray-600">Alarm (≥1.7m)</span>
-            </div>
-          </div>
-        </div>
-        
-        {data.length > 0 ? (
-          <div style={{ height: '500px' }}>
-            <Line ref={chartRef} data={chartData} options={chartOptions} />
-          </div>
-        ) : (
-          <div className="h-96 flex items-center justify-center text-gray-500">
-            {loading ? (
-              <div className="flex items-center gap-3">
-                <RefreshCw className="w-6 h-6 animate-spin" />
-                <span>Loading water level data...</span>
-              </div>
-            ) : (
-              <div className="text-center">
-                <Droplets className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                <p>No data available for the selected time range</p>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
