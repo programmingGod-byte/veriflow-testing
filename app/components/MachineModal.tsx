@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Monitor, Plus, Check } from 'lucide-react';
+import Image from 'next/image';
 
 const AddMachineModal = ({
   machineId,
@@ -15,35 +16,36 @@ const AddMachineModal = ({
   handleAddMachine
 }) => {
   const machineTypes = [
-    {
-      id: 'pravaah',
-      name: 'Pravaah',
-      description: 'Flow Management System',
-      icon: Monitor,
-      gradient: 'from-blue-500 to-cyan-500',
-    },
-    {
-      id: 'tarang',
-      name: 'Tarang',
-      description: 'Wave Analysis System',
-      icon: Monitor,
-      gradient: 'from-purple-500 to-pink-500',
-    },
-    {
-      id: 'drishti',
-      name: 'Drishti',
-      description: 'Vision Processing Unit',
-      icon: Monitor,
-      gradient: 'from-green-500 to-emerald-500',
-    },
-    {
-      id: 'doordrishti',
-      name: 'Doordrishti',
-      description: 'Remote Vision System',
-      icon: Monitor,
-      gradient: 'from-orange-500 to-red-500',
-    },
-  ];
+  {
+    id: 'pravaah',
+    name: 'Pravaah',
+    description: 'Flow Management System',
+    image: '/pravaah.png',
+    gradient: 'from-blue-500 to-cyan-500',
+  },
+  {
+    id: 'tarang',
+    name: 'Tarang',
+    description: 'Wave Analysis System',
+    image: '/tarang.png',
+    gradient: 'from-purple-500 to-pink-500',
+  },
+  {
+    id: 'drishti',
+    name: 'Drishti',
+    description: 'Vision Processing Unit',
+    image: '/drishti.png',
+    gradient: 'from-green-500 to-emerald-500',
+  },
+  {
+    id: 'doordrishti',
+    name: 'Doordrishti',
+    description: 'Remote Vision System',
+    image: '/doordrishti.png',
+    gradient: 'from-orange-500 to-red-500',
+  },
+];
+
 
   if (!isAddMachineModalOpen) return null;
 
@@ -75,40 +77,51 @@ const AddMachineModal = ({
             <label className="block text-base sm:text-xl font-semibold text-white mb-4">Select Machine Type</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {machineTypes.map((machine) => {
-                const IconComponent = machine.icon;
-                const isSelected = selectedMachineType === machine.id;
+  const imagePath = machine.image;
+  const isSelected = selectedMachineType === machine.id;
 
-                return (
-                  <div
-                    key={machine.id}
-                    className={`relative cursor-pointer rounded-xl p-4 border transition-all duration-200 ${
-                      isSelected
-                        ? 'border-blue-400 bg-white/30 ring-2 ring-blue-200 shadow'
-                        : 'border-white/20 hover:border-blue-200 hover:bg-white/10'
-                    }`}
-                    onClick={() => setSelectedMachineType(machine.id)}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-r ${machine.gradient} flex items-center justify-center`}>
-                        <IconComponent className="w-6 h-6 text-white" />
-                      </div>
+  return (
+    <div
+      key={machine.id}
+      className={`relative cursor-pointer rounded-xl p-4 border transition-all duration-200 ${
+        isSelected
+          ? 'border-blue-400 bg-white/30 ring-2 ring-blue-200 shadow'
+          : 'border-white/20 hover:border-blue-200 hover:bg-white/10'
+      }`}
+      onClick={() => setSelectedMachineType(machine.id)}
+    >
+      <div className="flex items-center gap-4">
+        <div
+          className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-r ${machine.gradient} flex items-center justify-center`}
+        >
+          <Image
+            src={imagePath}
+            alt={machine.name}
+            width={32}
+            height={32}
+            className="object-contain"
+          />
+        </div>
 
-                      <div className="flex-1">
-                        <h3 className="text-base sm:text-lg font-semibold text-white">{machine.name}</h3>
-                        <p className="text-white/80 text-sm">{machine.description}</p>
-                      </div>
+        <div className="flex-1">
+          <h3 className="text-base sm:text-lg font-semibold text-white">
+            {machine.name}
+          </h3>
+          <p className="text-white/80 text-sm">{machine.description}</p>
+        </div>
 
-                      {isSelected && (
-                        <div className="flex-shrink-0">
-                          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                            <Check className="w-4 h-4 text-white" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+        {isSelected && (
+          <div className="flex-shrink-0">
+            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+              <Check className="w-4 h-4 text-white" />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+})}
+
             </div>
           </div>
 
