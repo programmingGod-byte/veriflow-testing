@@ -40,6 +40,8 @@ const Navbar = () => {
   const [editMachineName, setEditMachineName] = useState('');
   const [editMachineType,setEditMachineType] = useState("")
   const [editMachineIp, setEditMachineIp] = useState('');
+  const [editMachineLatitude, setEditMachineLatitude] = useState('');
+  const [editMachineLongitude, setEditMachineLongitude] = useState('');
   const [selectedMachineType, setSelectedMachineType] = useState('');
   const [isMachineDetailsOpen, setIsMachineDetailsOpen] = useState(false);
   const pathname = usePathname();
@@ -105,7 +107,9 @@ const Navbar = () => {
               setValue({
                 machineName: data.machines[0].machineName,
                 machineCode: data.machines[0].machineCode,
-                machineType: data.machines[0].machineType
+                machineType: data.machines[0].machineType,
+                latitude: data.machines[0].latitude,
+                longitude: data.machines[0].longitude
               })
               console.log(value)
 
@@ -127,7 +131,9 @@ const Navbar = () => {
     setValue({
       machineCode: machine.machineCode,
       machineName: machine.machineName,
-      machineType: machine.machineType
+      machineType: machine.machineType,
+      latitude: machine.latitude,
+      longitude: machine.longitude
 
     })
     setIsMachinesMenuOpen(false)
@@ -322,7 +328,9 @@ const Navbar = () => {
           machineName: editMachineName,
           machineCode: decryption.value,
           email: session?.user?.email,
-          machineType:editMachineType
+          machineType:editMachineType,
+          latitude: editMachineLatitude,
+          longitude: editMachineLongitude
         }),
       });
 
@@ -364,6 +372,8 @@ const Navbar = () => {
     setEditMachineName(machine.machineName || '');
     setEditMachineIp(encrypt(machine.machineCode));
     setEditMachineType(machine.machineType)
+    setEditMachineLongitude(machine.longitude || '');
+    setEditMachineLatitude(machine.latitude || '');
     setIsEditMachineModalOpen(true);
   };
 
@@ -841,6 +851,53 @@ const Navbar = () => {
               </svg>
               fill all the details
             </p>
+          </div>
+
+          <div className="group">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              latitude
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={editMachineLatitude}
+                onChange={(e) => setEditMachineLatitude(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 
+                         transition-all duration-200 bg-gray-50/50 hover:bg-white hover:border-gray-300"
+                placeholder=""
+                required
+              />
+              <div className="absolute inset-y-0 right-3 flex items-center">
+                <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+
+          <div className="group">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              longitude
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={editMachineLongitude}
+                onChange={(e) => setEditMachineLongitude(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 
+                         transition-all duration-200 bg-gray-50/50 hover:bg-white hover:border-gray-300"
+                placeholder=""
+                required
+              />
+              <div className="absolute inset-y-0 right-3 flex items-center">
+                <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
 

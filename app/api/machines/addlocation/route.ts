@@ -24,7 +24,7 @@ export async function POST(request) {
     }
 
     // Find the machine by password (You can also include ID for better accuracy)
-    const machine = user.machines.find((m) => m.password === machinePassword);
+    const machine = user.machines.find((m) => m.machineCode === machinePassword);
 
     if (!machine) {
       return NextResponse.json({ error: 'Machine not found' }, { status: 404 });

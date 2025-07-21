@@ -15,6 +15,8 @@ export function Providers({ children }) {
     machineName: "",
     machineCode: "",
     machineType: "",
+    latitude:"",
+    longitude:""
 
   });
   const [iseUserAdmin, setIsUserAdmin] = useState(false)

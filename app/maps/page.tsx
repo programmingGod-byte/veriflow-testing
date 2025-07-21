@@ -99,7 +99,7 @@ const MapComponent = () => {
           name: machine.name,
           longitude: parseFloat(machine.longitude),
           latitude: parseFloat(machine.latitude),
-          description: `Machine ID: ${machine.id}`,
+          description: `Machine name: ${machine.machineName}`,
           id: machine.id,
           password: machine.password,
           category: "machine",
@@ -242,7 +242,7 @@ const MapComponent = () => {
         },
         body: JSON.stringify({
           email: user.email,
-          machinePassword: selectedMachine.id,
+          machinePassword: selectedMachine.machineCode,
           latitude: lat,
           longitude: lng,
         }),
