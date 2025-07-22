@@ -37,7 +37,7 @@ const TemperatureChart = () => {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [showCustomInputs, setShowCustomInputs] = useState(false);
-  const { value, setValue } = useContext(MyContext);
+  const { value, setValue,iseUserAdmin } = useContext(MyContext);
 
   // Temperature status function
   const getTemperatureStatus = (temp) => {
