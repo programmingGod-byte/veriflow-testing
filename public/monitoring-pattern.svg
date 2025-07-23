@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+  <defs>
+    <radialGradient id="radarGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#3b82f6" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#1e40af" stop-opacity="0.1"/>
+    </radialGradient>
+    
+    <linearGradient id="dataFlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#3b82f6" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background grid -->
+  <defs>
+    <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+      <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#3b82f6" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#grid)"/>
+  
+  <!-- Radar sweep -->
+  <circle cx="600" cy="400" r="200" fill="url(#radarGrad)" opacity="0.6">
+    <animateTransform attributeName="transform" 
+                      type="rotate" 
+                      values="0 600 400; 360 600 400" 
+                      dur="8s" 
+                      repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Data points -->
+  <circle cx="400" cy="300" r="4" fill="#ef4444" opacity="0.8">
+    <animate attributeName="r" values="4; 8; 4" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.8; 1; 0.8" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  
+  <circle cx="650" cy="250" r="3" fill="#f59e0b" opacity="0.7">
+    <animate attributeName="r" values="3; 6; 3" dur="3s" repeatCount="indefinite"/>
+  </circle>
+  
+  <circle cx="800" cy="350" r="5" fill="#10b981" opacity="0.9">
+    <animate attributeName="r" values="5; 9; 5" dur="2.5s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Data streams -->
+  <rect x="0" y="320" width="1200" height="2" fill="url(#dataFlow)" opacity="0.7">
+    <animateTransform attributeName="transform" 
+                      type="translateX" 
+                      values="-1200; 1200" 
+                      dur="3s" 
+                      repeatCount="indefinite"/>
+  </rect>
+  
+  <rect x="0" y="480" width="1200" height="1" fill="url(#dataFlow)" opacity="0.5">
+    <animateTransform attributeName="transform" 
+                      type="translateX" 
+                      values="-1200; 1200" 
+                      dur="4s" 
+                      repeatCount="indefinite"/>
+  </rect>
+  
+  <!-- Warning zones -->
+  <polygon points="200,600 300,550 400,600 350,650" fill="#ef4444" opacity="0.3">
+    <animate attributeName="opacity" values="0.3; 0.6; 0.3" dur="2s" repeatCount="indefinite"/>
+  </polygon>
+  
+  <polygon points="700,200 850,150 900,200 750,250" fill="#f59e0b" opacity="0.2">
+    <animate attributeName="opacity" values="0.2; 0.5; 0.2" dur="3s" repeatCount="indefinite"/>
+  </polygon>
+</svg>
