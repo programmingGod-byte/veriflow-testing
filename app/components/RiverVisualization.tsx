@@ -769,7 +769,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
         
         {/* Statistics Cards */}
         {statistics && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
@@ -790,15 +790,6 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 border border-emerald-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-emerald-600">Total Rainfall</p>
-                  <p className="text-2xl font-bold text-emerald-900">{statistics.totalRainfall.toFixed(1)}mm</p>
-                </div>
-                <CloudRain className="w-8 h-8 text-emerald-600" />
-              </div>
-            </div>
             
             <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-lg p-4 border border-teal-200 shadow-sm">
               <div className="flex items-center justify-between">
