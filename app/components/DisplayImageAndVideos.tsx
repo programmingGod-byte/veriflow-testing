@@ -298,6 +298,12 @@ export default function MediaViewer() {
   const [filtersApplied, setFiltersApplied] = useState(false);
   const [BASE_URL, setBaseUrl] = useState("");
   const {value, setValue} = useContext(MyContext);
+  const [STATIC_VIDEO_URL,setStaticVideo] = useState("")
+  // --- MODIFICATION: Static URI for the video ---
+  // Replace this with the actual static URL of your video file.
+  // const STATIC_VIDEO_URL = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+  const STATIC_VIDEO_NAME = " Video.mp4";
+
 
   // Enhanced MIME type detection with better video support
   const getMimeType = (filename) => {
@@ -378,16 +384,19 @@ export default function MediaViewer() {
       setFiltersApplied(true);
     }
   };
-
-  useEffect(() => {
+useEffect(() => {
     if(value.machineCode.length > 0){
       console.log("Setting base URL with IP:", value.machineCode);
       setBaseUrl(`http://${value.machineCode}:5000`);
-      fetchLatestMedia("image");
-    }
-  }, [value]);
 
-  // Reset filters
+      // ✅ MODIFICATION: Change this line to use your new API proxy
+      setStaticVideo(`/api/video-proxy?ip=${value.machineCode}`);
+      
+      if (activeTab === 'image') {
+        fetchLatestMedia("image");
+      }
+    }
+  }, [value]);  // Reset filters
   const resetFilters = () => {
     setSelectedDate('');
     setSelectedTime('');
@@ -499,7 +508,8 @@ export default function MediaViewer() {
         mimeType: mimeType,
         isDirect: true
       });
-    } catch (err) {
+    } catch (err)
+ {
       console.error("Error fetching media file:", err);
       setError(`Failed to load media file: ${err.message}`);
     } finally {
@@ -510,7 +520,8 @@ export default function MediaViewer() {
   // Handle tab change
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    setActiveOption('latest');
+    // Reset state, but ensure 'latest' is default for 'image' tab
+    setActiveOption('latest'); 
     setLatestMedia(null);
     setMediaList([]);
     setFilteredMediaList([]);
@@ -521,6 +532,7 @@ export default function MediaViewer() {
 
   // Handle option change
   const handleOptionChange = (option) => {
+    // This function now only applies to the 'image' tab
     setActiveOption(option);
     setLatestMedia(null);
     setMediaList([]);
@@ -538,7 +550,9 @@ export default function MediaViewer() {
 
   // Initial load
   useEffect(() => {
-    if (value.machineCode.length > 0) {
+    if (value.machineCode.length > 0 && activeTab === 'image') {
+      // MODIFICATION: Only fetch on load if it's the image tab.
+      // The video tab is now static and doesn't need an initial fetch.
       fetchLatestMedia(activeTab);
     }
   }, [activeTab, value.machineCode]);
@@ -622,175 +636,180 @@ export default function MediaViewer() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Mode Selection */}
-        <div className="mb-8">
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <button
-              onClick={() => handleOptionChange('latest')}
-              className={`group flex items-center space-x-2 px-6 py-3 rounded-xl border-2 transition-all duration-300 font-medium text-sm ${
-                activeOption === 'latest'
-                  ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white border-transparent shadow-lg shadow-blue-200/50'
-                  : 'bg-white/80 text-slate-700 border-slate-200 hover:bg-white hover:border-blue-300 hover:shadow-md backdrop-blur-sm'
-              }`}
-            >
-              <div className={`p-1.5 rounded-lg ${activeOption === 'latest' ? 'bg-white/20' : 'bg-gradient-to-r from-blue-600 to-cyan-500'}`}>
-                <Clock size={16} className={activeOption === 'latest' ? 'text-white' : 'text-white'} />
+        {/* MODIFICATION: The entire section for mode selection and filtering is now conditional on the 'image' tab being active */}
+        {activeTab === 'image' && (
+          <>
+            {/* Mode Selection */}
+            <div className="mb-8">
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <button
+                  onClick={() => handleOptionChange('latest')}
+                  className={`group flex items-center space-x-2 px-6 py-3 rounded-xl border-2 transition-all duration-300 font-medium text-sm ${
+                    activeOption === 'latest'
+                      ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white border-transparent shadow-lg shadow-blue-200/50'
+                      : 'bg-white/80 text-slate-700 border-slate-200 hover:bg-white hover:border-blue-300 hover:shadow-md backdrop-blur-sm'
+                  }`}
+                >
+                  <div className={`p-1.5 rounded-lg ${activeOption === 'latest' ? 'bg-white/20' : 'bg-gradient-to-r from-blue-600 to-cyan-500'}`}>
+                    <Clock size={16} className={activeOption === 'latest' ? 'text-white' : 'text-white'} />
+                  </div>
+                  <span>Latest Photo</span>
+                </button>
+                
+                <button
+                  onClick={() => handleOptionChange('timestamp')}
+                  className={`group flex items-center space-x-2 px-6 py-3 rounded-xl border-2 transition-all duration-300 font-medium text-sm ${
+                    activeOption === 'timestamp'
+                      ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white border-transparent shadow-lg shadow-purple-200/50'
+                      : 'bg-white/80 text-slate-700 border-slate-200 hover:bg-white hover:border-purple-300 hover:shadow-md backdrop-blur-sm'
+                  }`}
+                >
+                  <div className={`p-1.5 rounded-lg ${activeOption === 'timestamp' ? 'bg-white/20' : 'bg-gradient-to-r from-blue-600 to-cyan-500'}`}>
+                    <Search size={16} className={activeOption === 'timestamp' ? 'text-white' : 'text-white'} />
+                  </div>
+                  <span>Browse by time</span>
+                </button>
               </div>
-              <span>Latest {activeTab === 'image' ? 'Photo' : 'Video'}</span>
-            </button>
-            
-            <button
-              onClick={() => handleOptionChange('timestamp')}
-              className={`group flex items-center space-x-2 px-6 py-3 rounded-xl border-2 transition-all duration-300 font-medium text-sm ${
-                activeOption === 'timestamp'
-                  ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white border-transparent shadow-lg shadow-purple-200/50'
-                  : 'bg-white/80 text-slate-700 border-slate-200 hover:bg-white hover:border-purple-300 hover:shadow-md backdrop-blur-sm'
-              }`}
-            >
-              <div className={`p-1.5 rounded-lg ${activeOption === 'timestamp' ? 'bg-white/20' : 'bg-gradient-to-r from-blue-600 to-cyan-500'}`}>
-                <Search size={16} className={activeOption === 'timestamp' ? 'text-white' : 'text-white'} />
-              </div>
-              <span>Browse by time</span>
-            </button>
-          </div>
-        </div>
+            </div>
 
-        {/* Filter Section for Browse Mode */}
-        {activeOption === 'timestamp' && showFilters && (
-          <div className="mb-8">
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 border border-white/30 shadow-lg">
-              <div className="text-center mb-6">
-                <h3 className="text-xl font-bold text-slate-800 mb-1">Find Your Media</h3>
-                <p className="text-slate-600 text-sm">Select a date and time to browse your {activeTab === 'image' ? 'photos' : 'videos'}</p>
-              </div>
-              
-              <div className="flex flex-wrap gap-4 items-center justify-center">
-                {/* Date Dropdown */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowDateDropdown(!showDateDropdown)}
-                    className="flex items-center space-x-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all duration-200 min-w-[160px] text-sm"
-                  >
-                    <Calendar size={16} className="text-blue-600" />
-                    <span className="flex-1 text-left font-medium text-slate-700">
-                      {selectedDate || 'Select Date'}
-                    </span>
-                    <ChevronDown size={16} className="text-slate-400" />
-                  </button>
-                  {showDateDropdown && (
-                    <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto min-w-[200px]">
-                      <div className="p-1">
-                        <button
-                          onClick={() => {
-                            setSelectedDate('');
-                            setShowDateDropdown(false);
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-md text-slate-500 transition-colors text-sm"
-                        >
-                          All Dates
-                        </button>
-                        {availableDates.map((date) => (
-                          <button
-                            key={date}
-                            onClick={() => {
-                              setSelectedDate(date);
-                              setShowDateDropdown(false);
-                            }}
-                            className="w-full text-left px-3 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors font-medium text-sm"
-                          >
-                            {date}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Time Dropdown */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowTimeDropdown(!showTimeDropdown)}
-                    className="flex items-center space-x-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:border-purple-300 hover:shadow-sm transition-all duration-200 min-w-[160px] text-sm"
-                  >
-                    <Clock size={16} className="text-purple-600" />
-                    <span className="flex-1 text-left font-medium text-slate-700">
-                      {selectedTime || 'Select Time'}
-                    </span>
-                    <ChevronDown size={16} className="text-slate-400" />
-                  </button>
-                  {showTimeDropdown && (
-                    <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto min-w-[200px]">
-                      <div className="p-1">
-                        <button
-                          onClick={() => {
-                            setSelectedTime('');
-                            setShowTimeDropdown(false);
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-md text-slate-500 transition-colors text-sm"
-                        >
-                          All Times
-                        </button>
-                        {availableTimes.map((time) => (
-                          <button
-                            key={time}
-                            onClick={() => {
-                              setSelectedTime(time);
-                              setShowTimeDropdown(false);
-                            }}
-                            className="w-full text-left px-3 py-2 hover:bg-purple-50 hover:text-purple-600 rounded-md transition-colors font-medium text-sm"
-                          >
-                            {time}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Apply/Reset Buttons */}
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={applyFilters}
-                    disabled={!selectedDate && !selectedTime}
-                    className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg hover:from-blue-700 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm shadow-md"
-                  >
-                    <Filter size={16} />
-                    <span>Apply</span>
-                  </button>
+            {/* Filter Section for Browse Mode */}
+            {activeOption === 'timestamp' && showFilters && (
+              <div className="mb-8">
+                <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 border border-white/30 shadow-lg">
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-bold text-slate-800 mb-1">Find Your Media</h3>
+                    <p className="text-slate-600 text-sm">Select a date and time to browse your photos</p>
+                  </div>
                   
-                  {(selectedDate || selectedTime) && (
-                    <button
-                      onClick={resetFilters}
-                      className="flex items-center space-x-2 px-4 py-2.5 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-all duration-200 font-medium text-sm"
-                    >
-                      <X size={16} />
-                      <span>Reset</span>
-                    </button>
-                  )}
+                  <div className="flex flex-wrap gap-4 items-center justify-center">
+                    {/* Date Dropdown */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowDateDropdown(!showDateDropdown)}
+                        className="flex items-center space-x-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all duration-200 min-w-[160px] text-sm"
+                      >
+                        <Calendar size={16} className="text-blue-600" />
+                        <span className="flex-1 text-left font-medium text-slate-700">
+                          {selectedDate || 'Select Date'}
+                        </span>
+                        <ChevronDown size={16} className="text-slate-400" />
+                      </button>
+                      {showDateDropdown && (
+                        <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto min-w-[200px]">
+                          <div className="p-1">
+                            <button
+                              onClick={() => {
+                                setSelectedDate('');
+                                setShowDateDropdown(false);
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-md text-slate-500 transition-colors text-sm"
+                            >
+                              All Dates
+                            </button>
+                            {availableDates.map((date) => (
+                              <button
+                                key={date}
+                                onClick={() => {
+                                  setSelectedDate(date);
+                                  setShowDateDropdown(false);
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors font-medium text-sm"
+                              >
+                                {date}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Time Dropdown */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowTimeDropdown(!showTimeDropdown)}
+                        className="flex items-center space-x-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:border-purple-300 hover:shadow-sm transition-all duration-200 min-w-[160px] text-sm"
+                      >
+                        <Clock size={16} className="text-purple-600" />
+                        <span className="flex-1 text-left font-medium text-slate-700">
+                          {selectedTime || 'Select Time'}
+                        </span>
+                        <ChevronDown size={16} className="text-slate-400" />
+                      </button>
+                      {showTimeDropdown && (
+                        <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto min-w-[200px]">
+                          <div className="p-1">
+                            <button
+                              onClick={() => {
+                                setSelectedTime('');
+                                setShowTimeDropdown(false);
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-md text-slate-500 transition-colors text-sm"
+                            >
+                              All Times
+                            </button>
+                            {availableTimes.map((time) => (
+                              <button
+                                key={time}
+                                onClick={() => {
+                                  setSelectedTime(time);
+                                  setShowTimeDropdown(false);
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-purple-50 hover:text-purple-600 rounded-md transition-colors font-medium text-sm"
+                              >
+                                {time}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Apply/Reset Buttons */}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={applyFilters}
+                        disabled={!selectedDate && !selectedTime}
+                        className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg hover:from-blue-700 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm shadow-md"
+                      >
+                        <Filter size={16} />
+                        <span>Apply</span>
+                      </button>
+                      
+                      {(selectedDate || selectedTime) && (
+                        <button
+                          onClick={resetFilters}
+                          className="flex items-center space-x-2 px-4 py-2.5 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-all duration-200 font-medium text-sm"
+                        >
+                          <X size={16} />
+                          <span>Reset</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Filters Applied Banner */}
-        {filtersApplied && (
-          <div className="mb-6">
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-green-700 font-medium text-sm">
-                  Filters applied: {selectedDate && `Date: ${selectedDate}`} {selectedDate && selectedTime && ', '} {selectedTime && `Time: ${selectedTime}`}
-                </span>
+            {/* Filters Applied Banner */}
+            {filtersApplied && (
+              <div className="mb-6">
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-green-700 font-medium text-sm">
+                      Filters applied: {selectedDate && `Date: ${selectedDate}`} {selectedDate && selectedTime && ', '} {selectedTime && `Time: ${selectedTime}`}
+                    </span>
+                  </div>
+                  <button
+                    onClick={resetFilters}
+                    className="text-green-600 hover:text-green-800 font-medium text-sm hover:underline"
+                  >
+                    Clear filters
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={resetFilters}
-                className="text-green-600 hover:text-green-800 font-medium text-sm hover:underline"
-              >
-                Clear filters
-              </button>
-            </div>
-          </div>
+            )}
+          </>
         )}
 
         {/* Loading State */}
@@ -836,158 +855,165 @@ export default function MediaViewer() {
           </div>
         )}
 
-        {/* Latest Media Display */}
-        {activeOption === 'latest' && latestMedia && !loading && (
-          <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 border border-white/30 shadow-lg">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">
-                Latest {activeTab === 'image' ? 'Photo' : 'Video'}
-              </h2>
-              <p className="text-slate-600">{latestMedia.name}</p>
-            </div>
-            
-            <div className="flex justify-center">
-              {activeTab === 'image' ? (
-                <div className="relative max-w-2xl w-full">
-                  <img
-                    src={latestMedia.url}
-                    alt={latestMedia.name}
-                    className="w-full h-auto rounded-xl shadow-lg"
-                    style={{ maxHeight: '500px', objectFit: 'contain' }}
-                    onError={(e) => {
-                      console.error('Image load error:', e);
-                      setError(`Failed to load image: ${latestMedia.name}`);
-                    }}
-                  />
-                  <div className="absolute top-4 right-4">
-                    <a
-                      href={latestMedia.url}
-                      download={latestMedia.name}
-                      className="bg-black/20 backdrop-blur-sm text-white p-2 rounded-lg hover:bg-black/30 transition-colors"
-                    >
-                      <Download size={20} />
-                    </a>
+        {/* MODIFICATION: Conditional Rendering based on activeTab */}
+        {activeTab === 'image' ? (
+          <>
+            {/* Latest Media Display (for Images) */}
+            {activeOption === 'latest' && latestMedia && !loading && (
+              <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 border border-white/30 shadow-lg">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold text-slate-800 mb-2">
+                    Latest Photo
+                  </h2>
+                  <p className="text-slate-600">{latestMedia.name}</p>
+                </div>
+                
+                <div className="flex justify-center">
+                  <div className="relative max-w-2xl w-full">
+                    <img
+                      src={latestMedia.url}
+                      alt={latestMedia.name}
+                      className="w-full h-auto rounded-xl shadow-lg"
+                      style={{ maxHeight: '500px', objectFit: 'contain' }}
+                      onError={(e) => {
+                        console.error('Image load error:', e);
+                        setError(`Failed to load image: ${latestMedia.name}`);
+                      }}
+                    />
+                    <div className="absolute top-4 right-4">
+                      <a
+                        href={latestMedia.url}
+                        download={latestMedia.name}
+                        className="bg-black/20 backdrop-blur-sm text-white p-2 rounded-lg hover:bg-black/30 transition-colors"
+                      >
+                        <Download size={20} />
+                      </a>
+                    </div>
                   </div>
                 </div>
-              ) : (
+                <MediaDebugInfo media={latestMedia} showDebug={showDebug} />
+              </div>
+            )}
+
+            {/* Media List Display (for Images) */}
+            {activeOption === 'timestamp' && !showFilters && (mediaList.length > 0 || filteredMediaList.length > 0) && !loading && (
+              <div className="space-y-6">
+                {/* View Mode Toggle */}
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-slate-800">
+                    {filtersApplied ? 'Filtered Results' : 'All Media'} 
+                    <span className="text-lg font-normal text-slate-600 ml-2">
+                      ({(filtersApplied ? filteredMediaList : mediaList).length} items)
+                    </span>
+                  </h2>
+                  <div className="flex items-center bg-white/50 rounded-lg p-1 backdrop-blur-sm border border-white/30">
+                    <button
+                      onClick={() => setViewMode('grid')}
+                      className={`p-2 rounded-md transition-colors ${
+                        viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    >
+                      <Grid size={18} />
+                    </button>
+                    <button
+                      onClick={() => setViewMode('list')}
+                      className={`p-2 rounded-md transition-colors ${
+                        viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    >
+                      <List size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Media Grid/List */}
+                <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+                  {(filtersApplied ? filteredMediaList : mediaList).map((media, index) => (
+                    <div
+                      key={index}
+                      className={`bg-white/80 backdrop-blur-lg rounded-xl border border-white/30 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group ${
+                        viewMode === 'list' ? 'flex items-center p-4' : 'p-4'
+                      }`}
+                      onClick={() => fetchMediaFile(media.name, activeTab)}
+                    >
+                      {viewMode === 'grid' ? (
+                        <>
+                          <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg mb-4 flex items-center justify-center group-hover:from-blue-50 group-hover:to-blue-100 transition-colors">
+                            <FileImage size={32} className="text-slate-400 group-hover:text-blue-500" />
+                          </div>
+                          <div className="space-y-2">
+                            <h3 className="font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
+                              {media.name}
+                            </h3>
+                            <div className="flex items-center space-x-2 text-sm text-slate-600">
+                              <Calendar size={14} />
+                              <span>{formatDate(media.timestamp)}</span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-sm text-slate-600">
+                              <Clock size={14} />
+                              <span>{formatTime(media.timestamp)}</span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center mr-4 group-hover:from-blue-50 group-hover:to-blue-100 transition-colors flex-shrink-0">
+                            <FileImage size={24} className="text-slate-400 group-hover:text-blue-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
+                              {media.name}
+                            </h3>
+                            <div className="flex items-center space-x-4 text-sm text-slate-600 mt-1">
+                              <div className="flex items-center space-x-1">
+                                <Calendar size={14} />
+                                <span>{formatDate(media.timestamp)}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Clock size={14} />
+                                <span>{formatTime(media.timestamp)}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 text-slate-400 group-hover:text-blue-500 transition-colors">
+                            <Eye size={18} />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Static Video Display */}
+            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 border border-white/30 shadow-lg">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">
+                  Featured Video
+                </h2>
+              </div>
+              
+              <div className="flex justify-center">
                 <div className="w-full max-w-2xl">
                   <VideoPlayer
-                    src={latestMedia.url}
-                    name={latestMedia.name}
+                    src={STATIC_VIDEO_URL}
+                    name={STATIC_VIDEO_NAME}
                     className="w-full rounded-xl shadow-lg"
                     onError={(e) => {
-                      console.error('Video load error:', e);
-                      setError(`Failed to load video: ${latestMedia.name}`);
+                      console.error('Static video load error:', e);
+                      // You might want to set a general error state here if needed
                     }}
                   />
                 </div>
-              )}
-            </div>
-            
-            <MediaDebugInfo media={latestMedia} showDebug={showDebug} />
-          </div>
-        )}
-
-        {/* Media List Display */}
-        {activeOption === 'timestamp' && !showFilters && (mediaList.length > 0 || filteredMediaList.length > 0) && !loading && (
-          <div className="space-y-6">
-            {/* View Mode Toggle */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-slate-800">
-                {filtersApplied ? 'Filtered Results' : 'All Media'} 
-                <span className="text-lg font-normal text-slate-600 ml-2">
-                  ({(filtersApplied ? filteredMediaList : mediaList).length} items)
-                </span>
-              </h2>
-              <div className="flex items-center bg-white/50 rounded-lg p-1 backdrop-blur-sm border border-white/30">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
-                  }`}
-                >
-                  <Grid size={18} />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
-                  }`}
-                >
-                  <List size={18} />
-                </button>
               </div>
             </div>
-
-            {/* Media Grid/List */}
-            <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
-              {(filtersApplied ? filteredMediaList : mediaList).map((media, index) => (
-                <div
-                  key={index}
-                  className={`bg-white/80 backdrop-blur-lg rounded-xl border border-white/30 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group ${
-                    viewMode === 'list' ? 'flex items-center p-4' : 'p-4'
-                  }`}
-                  onClick={() => fetchMediaFile(media.name, activeTab)}
-                >
-                  {viewMode === 'grid' ? (
-                    <>
-                      <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg mb-4 flex items-center justify-center group-hover:from-blue-50 group-hover:to-blue-100 transition-colors">
-                        {activeTab === 'image' ? (
-                          <FileImage size={32} className="text-slate-400 group-hover:text-blue-500" />
-                        ) : (
-                          <Video size={32} className="text-slate-400 group-hover:text-purple-500" />
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <h3 className="font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
-                          {media.name}
-                        </h3>
-                        <div className="flex items-center space-x-2 text-sm text-slate-600">
-                          <Calendar size={14} />
-                          <span>{formatDate(media.timestamp)}</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-sm text-slate-600">
-                          <Clock size={14} />
-                          <span>{formatTime(media.timestamp)}</span>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center mr-4 group-hover:from-blue-50 group-hover:to-blue-100 transition-colors flex-shrink-0">
-                        {activeTab === 'image' ? (
-                          <FileImage size={24} className="text-slate-400 group-hover:text-blue-500" />
-                        ) : (
-                          <Video size={24} className="text-slate-400 group-hover:text-purple-500" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
-                          {media.name}
-                        </h3>
-                        <div className="flex items-center space-x-4 text-sm text-slate-600 mt-1">
-                          <div className="flex items-center space-x-1">
-                            <Calendar size={14} />
-                            <span>{formatDate(media.timestamp)}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Clock size={14} />
-                            <span>{formatTime(media.timestamp)}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2 text-slate-400 group-hover:text-blue-500 transition-colors">
-                        <Eye size={18} />
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          </>
         )}
 
-        {/* Selected Media Display */}
+        {/* Selected Media Display (Modal) */}
         {selectedMedia && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -1042,24 +1068,20 @@ export default function MediaViewer() {
           </div>
         )}
 
-        {/* Empty State */}
-        {activeOption === 'timestamp' && !showFilters && !loading && (
+        {/* Empty State (Only for Images now) */}
+        {activeTab === 'image' && activeOption === 'timestamp' && !showFilters && !loading && (
           (filtersApplied ? filteredMediaList.length === 0 : mediaList.length === 0) && (
             <div className="text-center py-16">
               <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                {activeTab === 'image' ? (
-                  <FileImage size={32} className="text-slate-400" />
-                ) : (
-                  <Video size={32} className="text-slate-400" />
-                )}
+                <FileImage size={32} className="text-slate-400" />
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-2">
-                {filtersApplied ? 'No media found' : `No ${activeTab === 'image' ? 'photos' : 'videos'} available`}
+                {filtersApplied ? 'No media found' : `No photos available`}
               </h3>
               <p className="text-slate-600 mb-6">
                 {filtersApplied 
                   ? 'Try adjusting your filters to find what you\'re looking for.'
-                  : `No ${activeTab === 'image' ? 'photos' : 'videos'} have been captured yet.`
+                  : `No photos have been captured yet.`
                 }
               </p>
               {filtersApplied && (

@@ -251,7 +251,7 @@ export default function RealtimeDataPage() {
               transition={{ duration: 0.5, delay: 0.1 }}
             >
               <span className="text-slate-600 text-sm mr-4">
-                Last updated: {formatTime(currentTime)}
+                {/* Last updated: {formatTime(currentTime)} */}
               </span>
               <button
                 onClick={refreshData}
@@ -285,7 +285,7 @@ export default function RealtimeDataPage() {
         </div>
 
         {/* Key stats */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
             title="Depth"
             value={currentDepth}
