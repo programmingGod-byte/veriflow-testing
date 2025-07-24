@@ -13,6 +13,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [isDarkMode, setIsDarkMode] = useState(false);
   
   // Image upload state
   const [profileImage, setProfileImage] = useState<File | null>(null);
@@ -100,6 +101,21 @@ export default function ProfilePage() {
       setCoverImagePreview(null);
     }
   }, [isEditing]);
+
+  // Load dark mode preference from localStorage
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode !== null) {
+      setIsDarkMode(JSON.parse(savedDarkMode));
+    }
+  }, []);
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    const newDarkMode = !isDarkMode;
+    setIsDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
+  };
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -233,10 +249,40 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 pt-24 px-4 pb-16">
+    <div className={`min-h-screen pt-24 px-4 pb-16 transition-all duration-500 ${
+      isDarkMode 
+        ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800' 
+        : 'bg-gradient-to-br from-blue-50 to-cyan-50'
+    }`}>
+      {/* Dark Mode Toggle */}
+      <motion.button
+        onClick={toggleDarkMode}
+        className={`fixed top-4 right-4 z-50 p-3 rounded-full transition-all duration-300 ${
+          isDarkMode 
+            ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400' 
+            : 'bg-gray-800 text-yellow-400 hover:bg-gray-700'
+        } shadow-lg`}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+      >
+        {isDarkMode ? (
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+          </svg>
+        ) : (
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+          </svg>
+        )}
+      </motion.button>
+
       <div className="max-w-5xl mx-auto">
         <motion.div 
-          className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100"
+          className={`rounded-2xl shadow-xl overflow-hidden border transition-all duration-300 ${
+            isDarkMode 
+              ? 'bg-gray-800 border-gray-700' 
+              : 'bg-white border-gray-100'
+          }`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -386,7 +432,9 @@ export default function ProfilePage() {
               
               <div className="mt-4 md:mt-0 md:ml-6 flex-1">
                 <motion.h1 
-                  className="text-3xl font-bold text-gray-900"
+                  className={`text-3xl font-bold ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3, duration: 0.5 }}
@@ -394,7 +442,9 @@ export default function ProfilePage() {
                   {session?.user?.name || 'User'}
                 </motion.h1>
                 <motion.div 
-                  className="mt-1 flex items-center gap-2 text-gray-500"
+                  className={`mt-1 flex items-center gap-2 ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                  }`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4, duration: 0.5 }}
@@ -407,7 +457,9 @@ export default function ProfilePage() {
                 </motion.div>
                 {formData.location && (
                   <motion.div 
-                    className="mt-1 flex items-center gap-2 text-gray-500"
+                    className={`mt-1 flex items-center gap-2 ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                    }`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5, duration: 0.5 }}
@@ -452,14 +504,18 @@ export default function ProfilePage() {
           </div>
           
           {/* Tabs */}
-          <div className="border-b border-gray-200 bg-gray-50">
+          <div className={`border-b transition-colors ${
+            isDarkMode 
+              ? 'border-gray-600 bg-gray-700' 
+              : 'border-gray-200 bg-gray-50'
+          }`}>
             <div className="flex px-8 overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => handleTabChange('profile')}
                 className={`py-4 px-6 relative font-medium transition-all ${
                   activeTab === 'profile'
-                    ? 'text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? (isDarkMode ? 'text-blue-400' : 'text-blue-600')
+                    : (isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700')
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -470,7 +526,9 @@ export default function ProfilePage() {
                 </div>
                 {activeTab === 'profile' && (
                   <motion.div 
-                    className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-t-lg"
+                    className={`absolute bottom-0 left-0 right-0 h-1 rounded-t-lg ${
+                      isDarkMode ? 'bg-blue-400' : 'bg-blue-600'
+                    }`}
                     layoutId="activeProfileTab"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -482,8 +540,8 @@ export default function ProfilePage() {
                 onClick={() => handleTabChange('security')}
                 className={`py-4 px-6 relative font-medium transition-all ${
                   activeTab === 'security'
-                    ? 'text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? (isDarkMode ? 'text-blue-400' : 'text-blue-600')
+                    : (isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700')
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -494,7 +552,9 @@ export default function ProfilePage() {
                 </div>
                 {activeTab === 'security' && (
                   <motion.div 
-                    className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-t-lg"
+                    className={`absolute bottom-0 left-0 right-0 h-1 rounded-t-lg ${
+                      isDarkMode ? 'bg-blue-400' : 'bg-blue-600'
+                    }`}
                     layoutId="activeProfileTab"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -506,8 +566,8 @@ export default function ProfilePage() {
                 onClick={() => handleTabChange('notifications')}
                 className={`py-4 px-6 relative font-medium transition-all ${
                   activeTab === 'notifications'
-                    ? 'text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? (isDarkMode ? 'text-blue-400' : 'text-blue-600')
+                    : (isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700')
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -518,7 +578,9 @@ export default function ProfilePage() {
                 </div>
                 {activeTab === 'notifications' && (
                   <motion.div 
-                    className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-t-lg"
+                    className={`absolute bottom-0 left-0 right-0 h-1 rounded-t-lg ${
+                      isDarkMode ? 'bg-blue-400' : 'bg-blue-600'
+                    }`}
                     layoutId="activeProfileTab"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -575,7 +637,7 @@ export default function ProfilePage() {
           </AnimatePresence>
 
           {/* Tab Content */}
-          <div className="p-8">
+          <div className={`p-8 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
             <AnimatePresence mode="wait">
               {activeTab === 'profile' && (
                 <motion.div 
@@ -588,10 +650,16 @@ export default function ProfilePage() {
                   <form onSubmit={handleSubmit} className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-3">Personal Information</h3>
+                        <h3 className={`text-lg font-semibold border-b pb-3 ${
+                          isDarkMode 
+                            ? 'text-gray-200 border-gray-600' 
+                            : 'text-gray-800 border-gray-200'
+                        }`}>Personal Information</h3>
                         
                         <div>
-                          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                          <label htmlFor="name" className={`block text-sm font-medium mb-1 ${
+                            isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                          }`}>
                             Full Name
                           </label>
                           <input
@@ -601,12 +669,22 @@ export default function ProfilePage() {
                             value={formData.name}
                             onChange={handleChange}
                             disabled={!isEditing}
-                            className={`w-full p-3 border text-black ${isEditing ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-gray-50'} rounded-lg transition-colors ${isEditing ? 'focus:ring-2 focus:ring-blue-200 focus:border-blue-400' : ''}`}
+                            className={`w-full p-3 border rounded-lg transition-colors ${
+                              isEditing 
+                                ? (isDarkMode 
+                                  ? 'border-blue-500 bg-gray-700 text-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400' 
+                                  : 'border-blue-300 bg-blue-50 text-black focus:ring-2 focus:ring-blue-200 focus:border-blue-400')
+                                : (isDarkMode 
+                                  ? 'border-gray-600 bg-gray-700 text-gray-300' 
+                                  : 'border-gray-200 bg-gray-50 text-black')
+                            }`}
                           />
                         </div>
                         
                         <div>
-                          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                          <label htmlFor="email" className={`block text-sm font-medium mb-1 ${
+                            isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                          }`}>
                             Email Address
                           </label>
                           <input
@@ -614,13 +692,21 @@ export default function ProfilePage() {
                             type="email"
                             value={session?.user?.email || ''}
                             disabled
-                            className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 text-black"
+                            className={`w-full p-3 border rounded-lg transition-colors ${
+                              isDarkMode 
+                                ? 'border-gray-600 bg-gray-700 text-gray-300' 
+                                : 'border-gray-200 bg-gray-50 text-black'
+                            }`}
                           />
-                          <p className="mt-1 text-xs text-gray-500">Email address cannot be changed</p>
+                          <p className={`mt-1 text-xs ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                          }`}>Email address cannot be changed</p>
                         </div>
                         
                         <div>
-                          <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+                          <label htmlFor="location" className={`block text-sm font-medium mb-1 ${
+                            isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                          }`}>
                             Location
                           </label>
                           <input
@@ -631,12 +717,22 @@ export default function ProfilePage() {
                             onChange={handleChange}
                             disabled={!isEditing}
                             placeholder="e.g. New York, NY"
-                            className={`w-full p-3 border text-black ${isEditing ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-gray-50'} rounded-lg transition-colors ${isEditing ? 'focus:ring-2 focus:ring-blue-200 focus:border-blue-400' : ''}`}
+                            className={`w-full p-3 border rounded-lg transition-colors ${
+                              isEditing 
+                                ? (isDarkMode 
+                                  ? 'border-blue-500 bg-gray-700 text-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400' 
+                                  : 'border-blue-300 bg-blue-50 text-black focus:ring-2 focus:ring-blue-200 focus:border-blue-400')
+                                : (isDarkMode 
+                                  ? 'border-gray-600 bg-gray-700 text-gray-300' 
+                                  : 'border-gray-200 bg-gray-50 text-black')
+                            }`}
                           />
                         </div>
                         
                         <div>
-                          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                          <label htmlFor="phone" className={`block text-sm font-medium mb-1 ${
+                            isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                          }`}>
                             Phone Number
                           </label>
                           <input
@@ -647,16 +743,30 @@ export default function ProfilePage() {
                             onChange={handleChange}
                             disabled={!isEditing}
                             placeholder="e.g. +1 (555) 123-4567"
-                            className={`w-full p-3 border text-black ${isEditing ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-gray-50'} rounded-lg transition-colors ${isEditing ? 'focus:ring-2 focus:ring-blue-200 focus:border-blue-400' : ''}`}
+                            className={`w-full p-3 border rounded-lg transition-colors ${
+                              isEditing 
+                                ? (isDarkMode 
+                                  ? 'border-blue-500 bg-gray-700 text-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400' 
+                                  : 'border-blue-300 bg-blue-50 text-black focus:ring-2 focus:ring-blue-200 focus:border-blue-400')
+                                : (isDarkMode 
+                                  ? 'border-gray-600 bg-gray-700 text-gray-300' 
+                                  : 'border-gray-200 bg-gray-50 text-black')
+                            }`}
                           />
                         </div>
                       </div>
                       
                       <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-3">About You</h3>
+                        <h3 className={`text-lg font-semibold border-b pb-3 ${
+                          isDarkMode 
+                            ? 'text-gray-200 border-gray-600' 
+                            : 'text-gray-800 border-gray-200'
+                        }`}>About You</h3>
                         
                         <div>
-                          <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
+                          <label htmlFor="bio" className={`block text-sm font-medium mb-1 ${
+                            isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                          }`}>
                             Bio
                           </label>
                           <textarea
@@ -667,21 +777,41 @@ export default function ProfilePage() {
                             onChange={handleChange}
                             disabled={!isEditing}
                             placeholder="Tell us about yourself..."
-                            className={`w-full p-3 border text-black ${isEditing ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-gray-50'} rounded-lg transition-colors ${isEditing ? 'focus:ring-2 focus:ring-blue-200 focus:border-blue-400' : ''}`}
+                            className={`w-full p-3 border rounded-lg transition-colors ${
+                              isEditing 
+                                ? (isDarkMode 
+                                  ? 'border-blue-500 bg-gray-700 text-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400' 
+                                  : 'border-blue-300 bg-blue-50 text-black focus:ring-2 focus:ring-blue-200 focus:border-blue-400')
+                                : (isDarkMode 
+                                  ? 'border-gray-600 bg-gray-700 text-gray-300' 
+                                  : 'border-gray-200 bg-gray-50 text-black')
+                            }`}
                           />
-                          <p className="mt-1 text-xs text-gray-500">Brief description for your profile</p>
+                          <p className={`mt-1 text-xs ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                          }`}>Brief description for your profile</p>
                         </div>
                         
                         {isEditing && (
-                          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className={`p-4 border rounded-lg ${
+                            isDarkMode 
+                              ? 'bg-blue-900/30 border-blue-700' 
+                              : 'bg-blue-50 border-blue-200'
+                          }`}>
                             <div className="flex items-start gap-3">
-                              <div className="text-blue-500 mt-0.5 p-1 bg-blue-100 rounded-full">
+                              <div className={`mt-0.5 p-1 rounded-full ${
+                                isDarkMode 
+                                  ? 'text-blue-400 bg-blue-800/50' 
+                                  : 'text-blue-500 bg-blue-100'
+                              }`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                 </svg>
                               </div>
                               <div>
-                                <p className="text-sm text-blue-700">
+                                <p className={`text-sm ${
+                                  isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                                }`}>
                                   Your profile information will be visible to other users of the platform.
                                 </p>
                               </div>
@@ -732,27 +862,47 @@ export default function ProfilePage() {
                   transition={{ duration: 0.3 }}
                   className="space-y-6"
                 >
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className={`border rounded-lg p-4 ${
+                    isDarkMode 
+                      ? 'bg-blue-900/30 border-blue-700' 
+                      : 'bg-blue-50 border-blue-200'
+                  }`}>
                     <div className="flex items-start gap-3">
-                      <div className="text-blue-500 mt-0.5">
+                      <div className={`mt-0.5 ${
+                        isDarkMode ? 'text-blue-400' : 'text-blue-500'
+                      }`}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                         </svg>
                       </div>
                       <div>
-                        <h3 className="text-blue-800 font-medium">Account Security</h3>
-                        <p className="text-sm text-blue-600 mt-1">
+                        <h3 className={`font-medium ${
+                          isDarkMode ? 'text-blue-300' : 'text-blue-800'
+                        }`}>Account Security</h3>
+                        <p className={`text-sm mt-1 ${
+                          isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                        }`}>
                           Your account is secured with Google Authentication. To change your password, please use Google's account settings.
                         </p>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="px-4 py-5 bg-gray-50 border-b border-gray-200">
-                      <h3 className="text-lg font-medium text-gray-900">Login Sessions</h3>
+                  <div className={`border rounded-lg overflow-hidden ${
+                    isDarkMode ? 'border-gray-600' : 'border-gray-200'
+                  }`}>
+                    <div className={`px-4 py-5 border-b ${
+                      isDarkMode 
+                        ? 'bg-gray-700 border-gray-600' 
+                        : 'bg-gray-50 border-gray-200'
+                    }`}>
+                      <h3 className={`text-lg font-medium ${
+                        isDarkMode ? 'text-gray-200' : 'text-gray-900'
+                      }`}>Login Sessions</h3>
                     </div>
-                    <div className="divide-y divide-gray-200">
+                    <div className={`divide-y ${
+                      isDarkMode ? 'divide-gray-600' : 'divide-gray-200'
+                    }`}>
                       <div className="px-4 py-5 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-green-100 rounded-full">
@@ -761,8 +911,12 @@ export default function ProfilePage() {
                             </svg>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">Current Session</p>
-                            <p className="text-sm text-gray-500">Windows • Chrome • IP: 192.168.1.1</p>
+                            <p className={`font-medium ${
+                              isDarkMode ? 'text-gray-200' : 'text-gray-900'
+                            }`}>Current Session</p>
+                            <p className={`text-sm ${
+                              isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                            }`}>Windows • Chrome • IP: 192.168.1.1</p>
                           </div>
                         </div>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -794,20 +948,34 @@ export default function ProfilePage() {
                   transition={{ duration: 0.3 }}
                   className="space-y-6"
                 >
-                  <h3 className="text-lg font-medium text-gray-900">Notification Preferences</h3>
+                  <h3 className={`text-lg font-medium ${
+                    isDarkMode ? 'text-gray-200' : 'text-gray-900'
+                  }`}>Notification Preferences</h3>
                   
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className={`flex items-center justify-between p-4 border rounded-lg hover:bg-opacity-50 transition-colors ${
+                      isDarkMode 
+                        ? 'border-gray-600 hover:bg-gray-700' 
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}>
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-full">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                        <div className={`p-2 rounded-full ${
+                          isDarkMode ? 'bg-blue-900/50' : 'bg-blue-100'
+                        }`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${
+                            isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                          }`} viewBox="0 0 20 20" fill="currentColor">
                             <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                             <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                           </svg>
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">Email Notifications</p>
-                          <p className="text-sm text-gray-500">Receive alerts and updates via email</p>
+                          <p className={`font-medium ${
+                            isDarkMode ? 'text-gray-200' : 'text-gray-900'
+                          }`}>Email Notifications</p>
+                          <p className={`text-sm ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                          }`}>Receive alerts and updates via email</p>
                         </div>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -821,16 +989,28 @@ export default function ProfilePage() {
                       </label>
                     </div>
                     
-                    <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className={`flex items-center justify-between p-4 border rounded-lg hover:bg-opacity-50 transition-colors ${
+                      isDarkMode 
+                        ? 'border-gray-600 hover:bg-gray-700' 
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}>
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-100 rounded-full">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                        <div className={`p-2 rounded-full ${
+                          isDarkMode ? 'bg-indigo-900/50' : 'bg-indigo-100'
+                        }`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${
+                            isDarkMode ? 'text-indigo-400' : 'text-indigo-600'
+                          }`} viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" clipRule="evenodd" />
                           </svg>
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">App Notifications</p>
-                          <p className="text-sm text-gray-500">Receive in-app notifications and alerts</p>
+                          <p className={`font-medium ${
+                            isDarkMode ? 'text-gray-200' : 'text-gray-900'
+                          }`}>App Notifications</p>
+                          <p className={`text-sm ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                          }`}>Receive in-app notifications and alerts</p>
                         </div>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -844,16 +1024,28 @@ export default function ProfilePage() {
                       </label>
                     </div>
                     
-                    <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className={`flex items-center justify-between p-4 border rounded-lg hover:bg-opacity-50 transition-colors ${
+                      isDarkMode 
+                        ? 'border-gray-600 hover:bg-gray-700' 
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}>
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-100 rounded-full">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+                        <div className={`p-2 rounded-full ${
+                          isDarkMode ? 'bg-green-900/50' : 'bg-green-100'
+                        }`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${
+                            isDarkMode ? 'text-green-400' : 'text-green-600'
+                          }`} viewBox="0 0 20 20" fill="currentColor">
                             <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                           </svg>
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">SMS Notifications</p>
-                          <p className="text-sm text-gray-500">Receive alerts via text message</p>
+                          <p className={`font-medium ${
+                            isDarkMode ? 'text-gray-200' : 'text-gray-900'
+                          }`}>SMS Notifications</p>
+                          <p className={`text-sm ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                          }`}>Receive alerts via text message</p>
                         </div>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
