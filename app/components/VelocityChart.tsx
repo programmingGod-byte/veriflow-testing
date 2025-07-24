@@ -471,7 +471,7 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
       const currentDate = new Date(currentPoint.timestamp);
       const diffMinutes = (currentDate.getTime() - prevDate.getTime()) / (1000 * 60);
 
-      if (diffMinutes > 30) {
+      if (diffMinutes > 60) {
         timeSeriesWithGaps.push({ ...currentPoint, meanVelocity: null });
       }
       timeSeriesWithGaps.push(currentPoint);

@@ -221,7 +221,7 @@ export default function RealtimeDataPage() {
               transition={{ duration: 0.5, delay: 0.1 }}
             >
               <span className="text-slate-600 text-sm mr-4">
-                Last updated: {formatTime(currentTime)}
+                {/* Last updated: {formatTime(currentTime)} */}
               </span>
               <button
                 onClick={refreshData}

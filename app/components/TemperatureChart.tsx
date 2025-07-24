@@ -64,15 +64,15 @@ const TemperatureChart = () => {
       const timestamp = item.timestamp.toISOString();
       return `${timestamp},${item.temperature}`;
     }).join('\n');
-    
+
     const csvContent = csvHeader + csvRows;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    
+
     const startDate = filteredData[0].timestamp.toISOString().split('T')[0];
     const endDate = filteredData[filteredData.length - 1].timestamp.toISOString().split('T')[0];
     const filename = `temperature_data_${startDate}_to_${endDate}.csv`;
-    
+
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
@@ -90,25 +90,13 @@ const TemperatureChart = () => {
       setLoading(true);
       // Using a mock fetch for demonstration as the API route is not available.
       // In a real scenario, this would be:
-      // const response = await fetch(`/api/temperature?ip=${value.machineCode}`);
-      // if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
-      // const textData = await response.text();
+      const response = await fetch(`/api/temperature?ip=${value.machineCode}`);
+      if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
+      const textData = await response.text();
 
       // Mock data generation for demonstration
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
-      let mockData = "Timestamp,Temperature\n";
-      let currentTime = new Date();
-      for (let i = 100; i > 0; i--) {
-          // Create a gap larger than 20 minutes around i=50
-          if (i > 48 && i < 52) {
-              currentTime.setMinutes(currentTime.getMinutes() - 15);
-          } else {
-              currentTime.setMinutes(currentTime.getMinutes() - 5);
-          }
-          const temp = 20 + Math.sin(i / 10) * 10 + Math.random() * 2;
-          mockData += `${currentTime.toISOString()},${temp.toFixed(2)}\n`;
-      }
-      const textData = mockData;
+
+      // const textData = mockData;
 
       const lines = textData.trim().split('\n');
       const parsedData = lines.slice(1).map(line => {
@@ -118,7 +106,7 @@ const TemperatureChart = () => {
           temperature: parseFloat(temperature)
         };
       }).sort((a, b) => a.timestamp - b.timestamp); // Ensure data is sorted by time
-      
+
       setData(parsedData);
       setError(null);
     } catch (err) {
@@ -141,8 +129,8 @@ const TemperatureChart = () => {
         startDate = new Date(customStartDate);
         const endDate = new Date(customEndDate);
         endDate.setHours(23, 59, 59, 999);
-        
-        const filtered = data.filter(item => 
+
+        const filtered = data.filter(item =>
           item.timestamp >= startDate && item.timestamp <= endDate
         );
         setFilteredData(filtered);
@@ -197,119 +185,140 @@ const TemperatureChart = () => {
 
   // Process data to insert nulls for time gaps > 20 minutes.
   // This creates breaks in the line chart.
+  
+
   const chartPoints = filteredData.reduce((points, currentItem, index, arr) => {
-    const twentyMinutesInMillis = 20 * 60 * 1000;
-    
-    // If it's not the first point, check the time difference from the previous one
-    if (index > 0) {
-      const previousItem = arr[index - 1];
-      const timeDiff = currentItem.timestamp.getTime() - previousItem.timestamp.getTime();
+  const twentyMinutesInMillis = 20 * 60 * 1000;
+  
+  // If it's not the first point, check the time difference from the previous one
+  if (index > 0) {
+    const previousItem = arr[index - 1];
+    const timeDiff = currentItem.timestamp.getTime() - previousItem.timestamp.getTime();
 
-      // If the gap is larger than 20 minutes, insert a null to create a break
-      if (timeDiff > twentyMinutesInMillis) {
-        points.push(null);
-      }
+    // If the gap is larger than 20 minutes, insert a null to create a break
+    if (timeDiff > twentyMinutesInMillis) {
+      points.push({
+        x: null,
+        y: null,
+      });
     }
-    
-    // Add the actual data point in the {x, y} object format required by Chart.js
-    points.push({
-      x: currentItem.timestamp,
-      y: currentItem.temperature,
-    });
+  }
+  
+  // Add the actual data point in the {x, y} object format required by Chart.js
+  points.push({
+    x: currentItem.timestamp,
+    y: currentItem.temperature,
+  });
 
-    return points;
-  }, []);
+  return points;
+}, []);
 
-  const chartData = {
-    // Labels are not strictly needed when providing x/y data objects.
-    // The x-values from the `chartPoints` array will be used for the x-axis.
-    datasets: [
-      {
-        label: 'Temperature (°C)',
-        // Use the newly processed data with potential nulls
-        data: chartPoints,
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        borderWidth: 2,
-        fill: true,
-        tension: 0.1,
-        pointRadius: 2,
-        pointHoverRadius: 5,
-        // This property tells Chart.js NOT to draw a line over the null gaps.
-        spanGaps: false,
+const chartData = {
+  datasets: [
+    {
+      label: 'Temperature (°C)',
+      data: chartPoints,
+      borderColor: 'rgb(59, 130, 246)',
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      borderWidth: 2,
+      fill: true,
+      tension: 0.1,
+      pointRadius: 2,
+      pointHoverRadius: 5,
+      spanGaps: false,
+    },
+  ],
+};
+
+// Updated chartOptions with better null handling
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'top',
+    },
+    title: {
+      display: true,
+      text: 'Temperature Over Time',
+      font: {
+        size: 18,
+        weight: 'bold',
       },
-    ],
-  };
-
-  // #endregion --- END OF MODIFICATION ---
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top',
+      padding: {
+        top: 10,
+        bottom: 20
+      }
+    },
+    tooltip: {
+      mode: 'index',
+      intersect: false,
+      filter: function(tooltipItem) {
+        // Filter out null data points from tooltips
+        return tooltipItem.parsed.y !== null && tooltipItem.parsed.x !== null;
+      },
+      callbacks: {
+        label: function(context) {
+          if (context.parsed.y === null || context.parsed.x === null) return null;
+          return `Temperature: ${context.parsed.y.toFixed(2)}°C`;
+        },
+        title: function(context) {
+          if (!context || context.length === 0) return null;
+          
+          // Find the first non-null context item
+          const validContext = context.find(ctx => 
+            ctx.parsed && ctx.parsed.x !== null && ctx.parsed.y !== null
+          );
+          
+          if (!validContext) return null;
+          
+          const date = new Date(validContext.parsed.x);
+          return date.toLocaleString();
+        },
+      },
+    },
+  },
+  scales: {
+    x: {
+      type: 'time',
+      time: {
+        unit: 'hour',
+        tooltipFormat: 'MMM dd, yyyy HH:mm',
+        displayFormats: {
+          hour: 'HH:mm',
+          day: 'MMM dd',
+        },
       },
       title: {
         display: true,
-        text: 'Temperature Over Time',
-        font: {
-          size: 18,
-          weight: 'bold',
-        },
-        padding: {
-            top: 10,
-            bottom: 20
-        }
+        text: 'Time',
       },
-      tooltip: {
-        mode: 'index',
-        intersect: false,
-        callbacks: {
-          label: function(context) {
-            if (context.parsed.y === null) return null;
-            return `Temperature: ${context.parsed.y.toFixed(2)}°C`;
-          },
-          title: function(context) {
-            const date = new Date(context[0].parsed.x);
-            return date.toLocaleString();
-          },
-        },
-      },
+      grid: {
+        display: false
+      }
     },
-    scales: {
-      x: {
-        type: 'time',
-        time: {
-          unit: 'hour',
-          tooltipFormat: 'MMM dd, yyyy HH:mm',
-          displayFormats: {
-            hour: 'HH:mm',
-            day: 'MMM dd',
-          },
-        },
-        title: {
-          display: true,
-          text: 'Time',
-        },
-        grid: {
-            display: false
-        }
+    y: {
+      title: {
+        display: true,
+        text: 'Temperature (°C)',
       },
-      y: {
-        title: {
-          display: true,
-          text: 'Temperature (°C)',
-        },
-        beginAtZero: false,
-      },
+      beginAtZero: false,
     },
-    interaction: {
-      mode: 'nearest',
-      axis: 'x',
-      intersect: false,
-    },
-  };
+  },
+  interaction: {
+    mode: 'nearest',
+    axis: 'x',
+    intersect: false,
+  },
+  // Add this to handle null data points better
+  elements: {
+    point: {
+      radius: function(context) {
+        return context.parsed.y === null ? 0 : 2;
+      }
+    }
+  }
+};
 
   if (loading) {
     return (
@@ -338,7 +347,7 @@ const TemperatureChart = () => {
   return (
     <div className="w-full max-w-7xl mx-auto p-4 md:p-6">
       <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
-        
+
         {/* Header with status and legend */}
         <div className="mb-6 flex flex-col sm:flex-row items-start justify-between gap-4">
           {tempStatus && (
@@ -392,11 +401,11 @@ const TemperatureChart = () => {
             <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50 rounded-lg border">
               <div className="flex items-center gap-2">
                 <label htmlFor="startDate" className="font-medium text-gray-700 text-sm">Start Date:</label>
-                <input type="date" id="startDate" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"/>
+                <input type="date" id="startDate" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
               </div>
               <div className="flex items-center gap-2">
                 <label htmlFor="endDate" className="font-medium text-gray-700 text-sm">End Date:</label>
-                <input type="date" id="endDate" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"/>
+                <input type="date" id="endDate" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
               </div>
               <button onClick={applyCustomFilter} disabled={!customStartDate || !customEndDate} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium">Apply Filter</button>
             </div>
