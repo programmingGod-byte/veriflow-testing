@@ -9,9 +9,10 @@ interface FeatureCardProps {
   title: string;
   description: string;
   delay?: number;
+  isDarkMode?: boolean;
 }
 
-export default function FeatureCard({ icon, title, description, delay = 0 }: FeatureCardProps) {
+export default function FeatureCard({ icon, title, description, delay = 0, isDarkMode = false }: FeatureCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -25,25 +26,37 @@ export default function FeatureCard({ icon, title, description, delay = 0 }: Fea
         tiltMaxAngleX={5}
         tiltMaxAngleY={5}
         glareEnable
-        glareMaxOpacity={0.1}
-        glareColor="#3b82f6"
+        glareMaxOpacity={isDarkMode ? 0.05 : 0.1}
+        glareColor={isDarkMode ? "#60a5fa" : "#3b82f6"}
         glarePosition="all"
         scale={1.02}
         transitionSpeed={1500}
         tiltReverse
       >
-        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-8 h-full shadow-lg border border-blue-100 backdrop-blur-sm">
+        <div className={`rounded-xl p-8 h-full shadow-lg backdrop-blur-sm border ${
+          isDarkMode 
+            ? 'bg-gradient-to-br from-gray-800 to-gray-700 border-gray-600' 
+            : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-100'
+        }`}>
           <div className="relative z-10">
-            <div className="w-16 h-16 bg-blue-500 rounded-lg mb-6 flex items-center justify-center text-white shadow-md">
+            <div className={`w-16 h-16 rounded-lg mb-6 flex items-center justify-center text-white shadow-md ${
+              isDarkMode ? 'bg-blue-600' : 'bg-blue-500'
+            }`}>
               {icon}
             </div>
-            <h3 className="text-xl font-bold mb-3 text-blue-900">{title}</h3>
-            <p className="text-gray-600">
+            <h3 className={`text-xl font-bold mb-3 ${
+              isDarkMode ? 'text-blue-300' : 'text-blue-900'
+            }`}>
+              {title}
+            </h3>
+            <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
               {description}
             </p>
 
             <motion.div 
-              className="mt-6 flex items-center text-blue-600 font-medium cursor-pointer"
+              className={`mt-6 flex items-center font-medium cursor-pointer ${
+                isDarkMode ? 'text-blue-400' : 'text-blue-600'
+              }`}
               whileHover={{ x: 5 }}
             >
               {/* <span>Learn more</span> */}
@@ -65,8 +78,12 @@ export default function FeatureCard({ icon, title, description, delay = 0 }: Fea
           </div>
 
           {/* Background decoration */}
-          <div className="absolute top-4 right-4 w-20 h-20 rounded-full bg-blue-200 opacity-20 blur-xl -z-10" />
-          <div className="absolute bottom-4 left-4 w-32 h-32 rounded-full bg-cyan-200 opacity-20 blur-xl -z-10" />
+          <div className={`absolute top-4 right-4 w-20 h-20 rounded-full opacity-20 blur-xl -z-10 ${
+            isDarkMode ? 'bg-blue-400' : 'bg-blue-200'
+          }`} />
+          <div className={`absolute bottom-4 left-4 w-32 h-32 rounded-full opacity-20 blur-xl -z-10 ${
+            isDarkMode ? 'bg-cyan-400' : 'bg-cyan-200'
+          }`} />
         </div>
       </Tilt>
     </motion.div>

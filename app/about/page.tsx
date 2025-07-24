@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -24,6 +25,22 @@ const staggerContainer = {
 };
 
 export default function About() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode !== null) {
+      setIsDarkMode(JSON.parse(savedDarkMode));
+    }
+  }, []);
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    const newDarkMode = !isDarkMode;
+    setIsDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
+  };
+
   // Team members data
 
   const teamMembers = [
@@ -83,12 +100,44 @@ export default function About() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
+    <div className={`min-h-screen transition-all duration-500 ${
+      isDarkMode 
+        ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800' 
+        : 'bg-gradient-to-br from-blue-50 to-cyan-50'
+    }`}>
+      {/* Dark Mode Toggle */}
+      <motion.button
+        onClick={toggleDarkMode}
+        className={`fixed top-4 right-4 z-50 p-3 rounded-full transition-all duration-300 ${
+          isDarkMode 
+            ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400' 
+            : 'bg-gray-800 text-yellow-400 hover:bg-gray-700'
+        } shadow-lg`}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+      >
+        {isDarkMode ? (
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+          </svg>
+        ) : (
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+          </svg>
+        )}
+      </motion.button>
+
       {/* Hero Section */}
-      <section className="relative min-h-[60vh] flex items-center justify-center bg-gradient-to-r from-blue-600 to-cyan-500 overflow-hidden">
+      <section className={`relative min-h-[60vh] flex items-center justify-center overflow-hidden ${
+        isDarkMode 
+          ? 'bg-gradient-to-r from-blue-800 to-cyan-700' 
+          : 'bg-gradient-to-r from-blue-600 to-cyan-500'
+      }`}>
         <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0 bg-[url('/flood-pattern.png')] bg-repeat opacity-10"></div>
-          <div className="h-40 absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-600/20 to-transparent"></div>
+          <div className="absolute inset-0 bg-[url('/flood-pattern.svg')] bg-repeat opacity-10"></div>
+          <div className={`h-40 absolute bottom-0 left-0 right-0 bg-gradient-to-t ${
+            isDarkMode ? 'from-blue-800/20' : 'from-blue-600/20'
+          } to-transparent`}></div>
         </div>
         
         <div className="container mx-auto px-4 relative z-10 text-center text-white">
@@ -101,7 +150,7 @@ export default function About() {
             About Visiflow
           </motion.h1>
           <motion.p 
-            className="text-xl md:text-2xl max-w-3xl mx-auto"
+            className="text-xl md:text-2xl max-w-3xl mx-auto opacity-90"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
@@ -113,7 +162,7 @@ export default function About() {
         {/* Wave decoration */}
         <div className="absolute bottom-0 left-0 right-0">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" className="w-full">
-            <path fill="#f0f9ff" fillOpacity="1" d="M0,128L48,144C96,160,192,192,288,197.3C384,203,480,181,576,181.3C672,181,768,203,864,218.7C960,235,1056,245,1152,229.3C1248,213,1344,171,1392,149.3L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+            <path fill={isDarkMode ? "#0f172a" : "#f0f9ff"} fillOpacity="1" d="M0,128L48,144C96,160,192,192,288,197.3C384,203,480,181,576,181.3C672,181,768,203,864,218.7C960,235,1056,245,1152,229.3C1248,213,1344,171,1392,149.3L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
           </svg>
         </div>
       </section>
@@ -130,16 +179,24 @@ export default function About() {
               variants={staggerContainer}
             >
               <motion.div variants={fadeIn}>
-                <h2 className="text-3xl font-bold text-blue-900 mb-6">Our Mission</h2>
-                <p className="text-lg text-gray-700 mb-6">
+                <h2 className={`text-3xl font-bold mb-6 ${
+                  isDarkMode ? 'text-blue-300' : 'text-blue-900'
+                }`}>Our Mission</h2>
+                <p className={`text-lg mb-6 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
                   At Visiflow, we're on a mission to revolutionize how communities predict and respond to flood threats. 
                   We believe that with the right technology and information, the devastating impact of floods can be significantly reduced.
                 </p>
-                <p className="text-lg text-gray-700 mb-6">
+                <p className={`text-lg mb-6 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
                   Our advanced sensor devices and AI-powered analytics provide unprecedented accuracy in water level monitoring and flood prediction, 
                   giving communities valuable time to prepare and respond.
                 </p>
-                <p className="text-lg text-gray-700">
+                <p className={`text-lg ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
                   Beyond technology, we work closely with local governments, emergency services, and communities to implement 
                   effective early warning systems and develop comprehensive flood preparedness plans.
                 </p>
@@ -153,7 +210,9 @@ export default function About() {
                 transition={{ duration: 0.6 }}
               >
                 <div className="rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br p-1">
-                  <div className="bg-white rounded-xl overflow-hidden relative">
+                  <div className={`rounded-xl overflow-hidden relative ${
+                    isDarkMode ? 'bg-gray-800' : 'bg-white'
+                  }`}>
                     <Image 
                       src="/aboutImage.png" 
                       alt="Visiflow mission" 
@@ -170,8 +229,12 @@ export default function About() {
                   </div>
                 </div>
                 
-                <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-cyan-500/20 rounded-full blur-xl -z-10"></div>
-                <div className="absolute -top-6 -left-6 w-32 h-32 bg-blue-500/20 rounded-full blur-xl -z-10"></div>
+                <div className={`absolute -bottom-6 -right-6 w-32 h-32 rounded-full blur-xl -z-10 ${
+                  isDarkMode ? 'bg-cyan-600/20' : 'bg-cyan-500/20'
+                }`}></div>
+                <div className={`absolute -top-6 -left-6 w-32 h-32 rounded-full blur-xl -z-10 ${
+                  isDarkMode ? 'bg-blue-600/20' : 'bg-blue-500/20'
+                }`}></div>
               </motion.div>
             </motion.div>
           </div>
@@ -179,7 +242,9 @@ export default function About() {
       </section>
       
       {/* Our Journey */}
-      <section className="py-20 bg-white">
+      <section className={`py-20 ${
+        isDarkMode ? 'bg-gray-800' : 'bg-white'
+      }`}>
         <div className="container mx-auto px-4">
           <motion.div
             className="text-center mb-16"
@@ -188,8 +253,12 @@ export default function About() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-3xl font-bold text-blue-900 mb-4">Our Journey</h2>
-            <p className="text-lg text-gray-700 max-w-3xl mx-auto">
+            <h2 className={`text-3xl font-bold mb-4 ${
+              isDarkMode ? 'text-blue-300' : 'text-blue-900'
+            }`}>Our Journey</h2>
+            <p className={`text-lg max-w-3xl mx-auto ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+            }`}>
               From a small startup to a global leader in flood prediction technology
             </p>
           </motion.div>
@@ -197,7 +266,9 @@ export default function About() {
           <div className="max-w-5xl mx-auto">
             <div className="relative">
               {/* Timeline line */}
-              <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-blue-200 transform -translate-x-1/2"></div>
+              <div className={`absolute top-0 bottom-0 left-1/2 w-0.5 transform -translate-x-1/2 ${
+                isDarkMode ? 'bg-blue-400' : 'bg-blue-200'
+              }`}></div>
               
               <div className="relative">
                 {milestones.map((milestone, index) => (
@@ -239,7 +310,9 @@ export default function About() {
       </section>
       
       {/* Team Section */}
-      <section className="py-20 bg-blue-50">
+      <section className={`py-20 ${
+        isDarkMode ? 'bg-gray-900' : 'bg-blue-50'
+      }`}>
         <div className="container mx-auto px-4">
           <motion.div
             className="text-center mb-16"
@@ -248,8 +321,12 @@ export default function About() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-3xl font-bold text-blue-900 mb-4">Meet Our Team</h2>
-            <p className="text-lg text-gray-700 max-w-3xl mx-auto">
+            <h2 className={`text-3xl font-bold mb-4 ${
+              isDarkMode ? 'text-blue-300' : 'text-blue-900'
+            }`}>Meet Our Team</h2>
+            <p className={`text-lg max-w-3xl mx-auto ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+            }`}>
               Passionate experts dedicated to building technology that saves lives
             </p>
           </motion.div>
@@ -258,7 +335,9 @@ export default function About() {
             {teamMembers.map((member, index) => (
               <motion.div
                 key={index}
-                className="bg-white rounded-xl shadow-md overflow-hidden"
+                className={`rounded-xl shadow-md overflow-hidden ${
+                  isDarkMode ? 'bg-gray-800' : 'bg-white'
+                }`}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -281,7 +360,7 @@ export default function About() {
                   </div>
                 </div>
                 <div className="p-4">
-                  <p className="text-gray-700">{member.bio}</p>
+                  <p className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>{member.bio}</p>
                 </div>
               </motion.div>
             ))}
@@ -299,8 +378,8 @@ export default function About() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-3xl font-bold text-blue-900 mb-4">Our Values</h2>
-            <p className="text-lg text-gray-700 max-w-3xl mx-auto">
+            <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Our Values</h2>
+            <p className={`text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} max-w-3xl mx-auto`}>
               The principles that guide our work and mission
             </p>
           </motion.div>
@@ -337,18 +416,28 @@ export default function About() {
             ].map((value, index) => (
               <motion.div
                 key={index}
-                className="bg-white p-8 rounded-xl shadow-md border border-blue-100"
+                className={`p-8 rounded-xl shadow-md border ${
+                  isDarkMode 
+                    ? 'bg-gray-800 border-gray-600' 
+                    : 'bg-white border-blue-100'
+                }`}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                whileHover={{ y: -5, boxShadow: "0 12px 24px rgba(0, 0, 0, 0.1)" }}
+                whileHover={{ y: -5, boxShadow: isDarkMode ? "0 12px 24px rgba(0, 0, 0, 0.3)" : "0 12px 24px rgba(0, 0, 0, 0.1)" }}
               >
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-6">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 ${
+                  isDarkMode 
+                    ? 'bg-blue-900 text-blue-300' 
+                    : 'bg-blue-100 text-blue-600'
+                }`}>
                   {value.icon}
                 </div>
-                <h3 className="text-xl font-bold text-blue-900 mb-3">{value.title}</h3>
-                <p className="text-gray-700">{value.description}</p>
+                <h3 className={`text-xl font-bold mb-3 ${
+                  isDarkMode ? 'text-blue-300' : 'text-blue-900'
+                }`}>{value.title}</h3>
+                <p className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>{value.description}</p>
               </motion.div>
             ))}
           </div>
@@ -356,7 +445,11 @@ export default function About() {
       </section>
       
       {/* CTA Section */}
-      <section className="py-16 bg-gradient-to-r from-blue-600 to-cyan-500 text-white">
+      <section className={`py-16 text-white ${
+        isDarkMode 
+          ? 'bg-gradient-to-r from-blue-800 to-cyan-700' 
+          : 'bg-gradient-to-r from-blue-600 to-cyan-500'
+      }`}>
         <div className="container mx-auto px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -365,7 +458,7 @@ export default function About() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-3xl font-bold mb-6">Join Our Mission</h2>
-            <p className="text-xl max-w-3xl mx-auto mb-8">
+            <p className="text-xl max-w-3xl mx-auto mb-8 opacity-90">
               Want to be part of our journey to protect communities from flood disasters?
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
