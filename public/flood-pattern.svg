@@ -1,84 +1,227 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
   <defs>
-    <linearGradient id="waterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.6"/>
-      <stop offset="50%" stop-color="#06b6d4" stop-opacity="0.4"/>
-      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.8"/>
+    <!-- Aggressive Water Gradients -->
+    <linearGradient id="stormyWater" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a" stop-opacity="0.9"/>
+      <stop offset="40%" stop-color="#3b82f6" stop-opacity="0.7"/>
+      <stop offset="70%" stop-color="#475569" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#1e293b" stop-opacity="0.9"/>
     </linearGradient>
     
-    <pattern id="ripples" patternUnits="userSpaceOnUse" width="100" height="100">
-      <circle cx="50" cy="50" r="20" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.3"/>
-      <circle cx="50" cy="50" r="35" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.2"/>
+    <linearGradient id="waveHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#93c5fd" stop-opacity="0.5"/>
+      <stop offset="50%" stop-color="#e0f2fe" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#93c5fd" stop-opacity="0.4"/>
+    </linearGradient>
+    
+    <linearGradient id="towerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6b7280" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#374151" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1f2937" stop-opacity="1"/>
+    </linearGradient>
+    
+    <!-- Chaotic Foam & Debris -->
+    <pattern id="violentFoam" patternUnits="userSpaceOnUse" width="150" height="100">
+      <ellipse cx="30" cy="25" rx="15" ry="5" fill="#ffffff" opacity="0.6"/>
+      <ellipse cx="100" cy="50" rx="20" ry="8" fill="#f0f9ff" opacity="0.4"/>
+      <ellipse cx="70" cy="80" rx="12" ry="4" fill="#ffffff" opacity="0.7"/>
+      <rect x="50" y="30" width="8" height="3" rx="2" fill="#64748b" opacity="0.5"/>
+      <rect x="120" y="60" width="10" height="4" rx="2" fill="#475569" opacity="0.6"/>
     </pattern>
+    
+    <!-- 3D Shadow & Distortion -->
+    <filter id="violentWave" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence baseFrequency="0.02 0.05" numOctaves="3" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="20"/>
+    </filter>
+    
+    <filter id="lightningGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <filter id="towerShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="6" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.7"/>
+    </filter>
   </defs>
   
-  <!-- Main water body -->
-  <path d="M0,400 Q300,350 600,400 Q900,450 1200,400 L1200,800 L0,800 Z" fill="url(#waterGrad)"/>
+  <!-- Stormy Sky -->
+  <rect width="100%" height="100%" fill="#0f172a"/>
   
-  <!-- Water surface ripples -->
-  <rect width="100%" height="100%" fill="url(#ripples)" opacity="0.3"/>
+  <!-- Submerged Towers & Structures -->
+  <g opacity="0.8" filter="url(#towerShadow)">
+    <!-- Tower 1 -->
+    <polygon points="150,800 200,400 250,800" fill="url(#towerGradient)"/>
+    <rect x="180" y="380" width="40" height="20" fill="#475569"/>
+    <rect x="185" y="350" width="30" height="30" fill="#6b7280"/>
+    
+    <!-- Tower 2 -->
+    <polygon points="220,800 250,500 280,800" fill="url(#towerGradient)"/>
+    <rect x="240" y="480" width="20" height="15" fill="#475569"/>
+    
+    <!-- Tower 3 -->
+    <rect x="800" y="350" width="80" height="450" fill="url(#towerGradient)"/>
+    <rect x="820" y="300" width="40" height="50" fill="#475569"/>
+    <rect x="810" y="280" width="60" height="20" fill="#6b7280"/>
+    
+    <!-- Tower 4 -->
+    <polygon points="950,800 980,450 1010,800" fill="url(#towerGradient)"/>
+    <rect x="970" y="430" width="20" height="25" fill="#475569"/>
+    
+    <!-- Bridge structure -->
+    <rect x="600" y="600" width="200" height="15" fill="url(#towerGradient)"/>
+    <rect x="650" y="580" width="20" height="40" fill="#475569"/>
+    <rect x="750" y="580" width="20" height="40" fill="#475569"/>
+  </g>
   
-  <!-- Animated water waves -->
-  <path d="M0,380 Q300,330 600,380 Q900,430 1200,380" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.4">
+  <!-- Violent, Chaotic Water Layers -->
+  <g filter="url(#violentWave)">
+    <!-- Main violent water layer -->
+    <path d="M-100,550 Q300,450 600,580 Q900,700 1300,500 L1300,800 L-100,800 Z" fill="url(#stormyWater)">
+      <animate attributeName="d" 
+               values="M-100,550 Q300,450 600,580 Q900,700 1300,500 L1300,800 L-100,800 Z;
+                       M-100,580 Q300,480 600,550 Q900,670 1300,530 L1300,800 L-100,800 Z;
+                       M-100,570 Q300,430 600,590 Q900,720 1300,480 L1300,800 L-100,800 Z;
+                       M-100,550 Q300,450 600,580 Q900,700 1300,500 L1300,800 L-100,800 Z"
+               dur="3s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Second chaotic layer -->
+    <path d="M-100,520 Q400,400 800,550 Q1000,650 1300,480 L1300,800 L-100,800 Z" fill="url(#stormyWater)" opacity="0.8">
+      <animate attributeName="d" 
+               values="M-100,520 Q400,400 800,550 Q1000,650 1300,480 L1300,800 L-100,800 Z;
+                       M-100,550 Q400,430 800,520 Q1000,620 1300,510 L1300,800 L-100,800 Z;
+                       M-100,540 Q400,380 800,570 Q1000,680 1300,460 L1300,800 L-100,800 Z;
+                       M-100,520 Q400,400 800,550 Q1000,650 1300,480 L1300,800 L-100,800 Z"
+               dur="2.5s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Third aggressive layer -->
+    <path d="M-100,490 Q350,380 700,520 Q950,620 1300,450 L1300,800 L-100,800 Z" fill="url(#stormyWater)" opacity="0.6">
+      <animate attributeName="d" 
+               values="M-100,490 Q350,380 700,520 Q950,620 1300,450 L1300,800 L-100,800 Z;
+                       M-100,520 Q350,410 700,490 Q950,590 1300,480 L1300,800 L-100,800 Z;
+                       M-100,510 Q350,360 700,540 Q950,640 1300,430 L1300,800 L-100,800 Z;
+                       M-100,490 Q350,380 700,520 Q950,620 1300,450 L1300,800 L-100,800 Z"
+               dur="4s" repeatCount="indefinite"/>
+    </path>
+  </g>
+  
+  <!-- Wave Highlights & Foam -->
+  <rect width="100%" height="100%" fill="url(#violentFoam)" opacity="0.4"/>
+  
+  <!-- Violent wave crests -->
+  <path d="M-100,500 Q300,420 600,520 Q900,600 1300,450" fill="none" stroke="url(#waveHighlight)" stroke-width="5" opacity="0.5">
     <animate attributeName="d" 
-             values="M0,380 Q300,330 600,380 Q900,430 1200,380;M0,390 Q300,340 600,390 Q900,440 1200,390;M0,380 Q300,330 600,380 Q900,430 1200,380" 
-             dur="4s" 
-             repeatCount="indefinite"/>
+             values="M-100,500 Q300,420 600,520 Q900,600 1300,450;
+                     M-100,520 Q300,440 600,500 Q900,580 1300,470;
+                     M-100,510 Q300,400 600,540 Q900,620 1300,430;
+                     M-100,500 Q300,420 600,520 Q900,600 1300,450"
+             dur="2s" repeatCount="indefinite"/>
   </path>
   
-  <!-- Floating debris -->
-  <circle cx="200" cy="370" r="3" fill="#8b5cf6" opacity="0.7">
-    <animateTransform attributeName="transform" 
-                      type="translate" 
-                      values="0,0; 20,-5; 0,0" 
-                      dur="6s" 
-                      repeatCount="indefinite"/>
-  </circle>
+  <path d="M-100,480 Q400,380 800,500 Q1000,580 1300,430" fill="none" stroke="url(#waveHighlight)" stroke-width="3" opacity="0.4">
+    <animate attributeName="d" 
+             values="M-100,480 Q400,380 800,500 Q1000,580 1300,430;
+                     M-100,500 Q400,400 800,480 Q1000,560 1300,450;
+                     M-100,490 Q400,360 800,520 Q1000,600 1300,410;
+                     M-100,480 Q400,380 800,500 Q1000,580 1300,430"
+             dur="2.8s" repeatCount="indefinite"/>
+  </path>
   
-  <circle cx="600" cy="390" r="2" fill="#64748b" opacity="0.6">
-    <animateTransform attributeName="transform" 
-                      type="translate" 
-                      values="0,0; -15,-3; 0,0" 
-                      dur="8s" 
-                      repeatCount="indefinite"/>
-  </circle>
+  <!-- Intense Rain -->
+  <g stroke="#93c5fd" stroke-width="2" opacity="0.6" stroke-linecap="round">
+    <line x1="50" y1="0" x2="60" y2="50">
+      <animateTransform attributeName="transform" type="translateY" values="0; 800" dur="1.2s" repeatCount="indefinite"/>
+    </line>
+    <line x1="150" y1="0" x2="160" y2="50">
+      <animateTransform attributeName="transform" type="translateY" values="0; 800" dur="1.5s" repeatCount="indefinite"/>
+    </line>
+    <line x1="250" y1="0" x2="260" y2="50">
+      <animateTransform attributeName="transform" type="translateY" values="0; 800" dur="1.1s" repeatCount="indefinite"/>
+    </line>
+    <line x1="350" y1="0" x2="360" y2="50">
+      <animateTransform attributeName="transform" type="translateY" values="0; 800" dur="1.3s" repeatCount="indefinite"/>
+    </line>
+    <line x1="450" y1="0" x2="460" y2="50">
+      <animateTransform attributeName="transform" type="translateY" values="0; 800" dur="1.4s" repeatCount="indefinite"/>
+    </line>
+    <line x1="550" y1="0" x2="560" y2="50">
+      <animateTransform attributeName="transform" type="translateY" values="0; 800" dur="1.6s" repeatCount="indefinite"/>
+    </line>
+    <line x1="650" y1="0" x2="660" y2="50">
+      <animateTransform attributeName="transform" type="translateY" values="0; 800" dur="1.2s" repeatCount="indefinite"/>
+    </line>
+    <line x1="750" y1="0" x2="760" y2="50">
+      <animateTransform attributeName="transform" type="translateY" values="0; 800" dur="1.7s" repeatCount="indefinite"/>
+    </line>
+    <line x1="850" y1="0" x2="860" y2="50">
+      <animateTransform attributeName="transform" type="translateY" values="0; 800" dur="1.1s" repeatCount="indefinite"/>
+    </line>
+    <line x1="950" y1="0" x2="960" y2="50">
+      <animateTransform attributeName="transform" type="translateY" values="0; 800" dur="1.8s" repeatCount="indefinite"/>
+    </line>
+    <line x1="1050" y1="0" x2="1060" y2="50">
+      <animateTransform attributeName="transform" type="translateY" values="0; 800" dur="1.3s" repeatCount="indefinite"/>
+    </line>
+  </g>
   
-  <!-- Rain drops -->
-  <g opacity="0.4">
-    <line x1="100" y1="0" x2="105" y2="30" stroke="#60a5fa" stroke-width="1">
+  <!-- Floating Debris -->
+  <g>
+    <rect x="100" y="480" width="20" height="8" rx="3" fill="#475569" opacity="0.9">
       <animateTransform attributeName="transform" 
                         type="translate" 
-                        values="0,-30; 0,830" 
-                        dur="2s" 
+                        values="0,0; 800,50; 1200,80" 
+                        dur="15s" 
                         repeatCount="indefinite"/>
-    </line>
-    <line x1="300" y1="0" x2="305" y2="30" stroke="#60a5fa" stroke-width="1">
+    </rect>
+    <rect x="900" y="550" width="30" height="10" rx="4" fill="#334155" opacity="0.8">
       <animateTransform attributeName="transform" 
                         type="translate" 
-                        values="0,-30; 0,830" 
-                        dur="2.5s" 
+                        values="0,0; -700,-40; -1000,-60" 
+                        dur="20s" 
                         repeatCount="indefinite"/>
-    </line>
-    <line x1="500" y1="0" x2="505" y2="30" stroke="#60a5fa" stroke-width="1">
+    </rect>
+    <circle cx="400" cy="520" r="8" fill="#64748b" opacity="0.7">
       <animateTransform attributeName="transform" 
                         type="translate" 
-                        values="0,-30; 0,830" 
-                        dur="1.8s" 
+                        values="0,0; 600,30; 800,60" 
+                        dur="12s" 
                         repeatCount="indefinite"/>
-    </line>
-    <line x1="700" y1="0" x2="705" y2="30" stroke="#60a5fa" stroke-width="1">
+    </circle>
+    <rect x="700" y="590" width="25" height="12" rx="2" fill="#475569" opacity="0.8">
       <animateTransform attributeName="transform" 
                         type="translate" 
-                        values="0,-30; 0,830" 
-                        dur="2.2s" 
+                        values="0,0; -500,20; -800,40" 
+                        dur="18s" 
                         repeatCount="indefinite"/>
-    </line>
-    <line x1="900" y1="0" x2="905" y2="30" stroke="#60a5fa" stroke-width="1">
-      <animateTransform attributeName="transform" 
-                        type="translate" 
-                        values="0,-30; 0,830" 
-                        dur="2.8s" 
-                        repeatCount="indefinite"/>
-    </line>
+    </rect>
+  </g>
+  
+  <!-- Lightning Strikes -->
+  <g filter="url(#lightningGlow)">
+    <path d="M400,0 L380,150 L410,150 L390,300 L450,180 L420,180 L480,0 Z" fill="#f0f9ff" opacity="0">
+      <animate attributeName="opacity" 
+               values="0; 0; 1; 0; 0; 0.8; 0; 0" 
+               dur="8s" 
+               repeatCount="indefinite"/>
+    </path>
+    <path d="M800,0 L790,200 L820,200 L800,400 L860,250 L830,250 L880,0 Z" fill="#f0f9ff" opacity="0">
+      <animate attributeName="opacity" 
+               values="0; 0; 0; 0; 0; 1; 0; 0.7; 0; 0" 
+               dur="10s" 
+               begin="2s"
+               repeatCount="indefinite"/>
+    </path>
+    <path d="M200,50 L190,180 L210,180 L195,350 L240,220 L215,220 L250,50 Z" fill="#ddd6fe" opacity="0">
+      <animate attributeName="opacity" 
+               values="0; 0; 0.9; 0; 0; 0; 0.6; 0; 0" 
+               dur="12s" 
+               begin="4s"
+               repeatCount="indefinite"/>
+    </path>
   </g>
 </svg>
