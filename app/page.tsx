@@ -72,14 +72,14 @@ export default function Home() {
       bgImage: "/monitoring-pattern.svg"
     },
     {
-      title: "Flood Prevention", 
+      title: "Flood Alerts", 
       description: "Early warning systems active",
       bgGradient: "from-purple-600 via-blue-600 to-cyan-500",
       bgImage: "/flood-pattern.svg"
     },
     {
       title: "Data Analytics",
-      description: "Advanced flood prediction models", 
+      description: "Live data visualization", 
       bgGradient: "from-indigo-600 via-purple-600 to-blue-500",
       bgImage: "/hero-bg.jpg"
     }
@@ -627,11 +627,7 @@ export default function Home() {
               <button
                 key={index}
                 onClick={() => setCurrentSlide(index)}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                  currentSlide === index 
-                    ? (isDarkMode ? 'bg-blue-400' : 'bg-blue-600') 
-                    : (isDarkMode ? 'bg-gray-600' : 'bg-gray-400')
-                }`}
+
               />
             ))}
           </div>
