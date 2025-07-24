@@ -384,20 +384,19 @@ export default function MediaViewer() {
       setFiltersApplied(true);
     }
   };
-
-  useEffect(() => {
+useEffect(() => {
     if(value.machineCode.length > 0){
       console.log("Setting base URL with IP:", value.machineCode);
       setBaseUrl(`http://${value.machineCode}:5000`);
-      setStaticVideo(`http://${value.machineCode}:5000/videos/video.mp4`);
-      // MODIFICATION: Only fetch media if the active tab is 'image'
+
+      // ✅ MODIFICATION: Change this line to use your new API proxy
+      setStaticVideo(`/api/video-proxy?ip=${value.machineCode}`);
+      
       if (activeTab === 'image') {
         fetchLatestMedia("image");
       }
     }
-  }, [value]);
-
-  // Reset filters
+  }, [value]);  // Reset filters
   const resetFilters = () => {
     setSelectedDate('');
     setSelectedTime('');
