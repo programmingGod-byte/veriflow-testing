@@ -294,7 +294,7 @@ app.get('/api/flow-angles', (req, res) => {
 
 
 
-/*                   NEWER CODE                 */
+/* REFACTORED CODE                 */
 const knownFormats = ['M/D/YY H:mm', 'YYYY-MM-DD HH:mm:ss'];
 
 /**
@@ -317,7 +317,7 @@ app.get('/newversion/depth/timestamp/:days', (req, res) => {
   }
 
   const thresholdDate = moment().subtract(days, 'days');
-  const results = [];
+  const resultsMap = new Map(); // Use a Map to store unique results
 
   const rl = readline.createInterface({
     input: fs.createReadStream(csvFilePath),
@@ -340,16 +340,20 @@ app.get('/newversion/depth/timestamp/:days', (req, res) => {
     }
 
     if (parsedDate.isSameOrAfter(thresholdDate)) {
+      const timestamp = parsedDate.format('M/D/YY H:mm');
       const meanDepth = parseFloat(tokens[tokens.length - 1]);
-      results.push({
-        timestamp: parsedDate.format('M/D/YY H:mm'),
-        mean_depth: meanDepth,
-      });
+      // Add to map (duplicates with the same timestamp key are automatically handled)
+      resultsMap.set(timestamp, meanDepth);
     }
   });
 
   rl.on('close', () => {
-    res.json(results);
+    // Convert map to the desired array format
+    const uniqueResults = Array.from(resultsMap, ([timestamp, mean_depth]) => ({
+      timestamp,
+      mean_depth,
+    }));
+    res.json(uniqueResults);
   });
 
   rl.on('error', (err) => {
@@ -370,7 +374,7 @@ app.get('/new/version/timestamp/:time1&:time2', (req, res) => {
     return res.status(400).json({ error: 'Invalid time format. Use YYYY-MM-DD HH:mm' });
   }
 
-  const results = [];
+  const resultsMap = new Map(); // Use a Map to store unique results
 
   const rl = readline.createInterface({
     input: fs.createReadStream(csvFilePath),
@@ -393,16 +397,20 @@ app.get('/new/version/timestamp/:time1&:time2', (req, res) => {
     }
 
     if (parsedDate.isBetween(start, end, undefined, '[]')) {
+      const timestamp = parsedDate.format('M/D/YY H:mm');
       const meanDepth = parseFloat(tokens[tokens.length - 1]);
-      results.push({
-        timestamp: parsedDate.format('M/D/YY H:mm'),
-        mean_depth: meanDepth,
-      });
+      // Add to map (duplicates with the same timestamp key are automatically handled)
+      resultsMap.set(timestamp, meanDepth);
     }
   });
 
   rl.on('close', () => {
-    res.json(results);
+    // Convert map to the desired array format
+    const uniqueResults = Array.from(resultsMap, ([timestamp, mean_depth]) => ({
+      timestamp,
+      mean_depth,
+    }));
+    res.json(uniqueResults);
   });
 
   rl.on('error', (err) => {
@@ -410,7 +418,6 @@ app.get('/new/version/timestamp/:time1&:time2', (req, res) => {
     res.status(500).json({ error: 'Failed to process CSV file' });
   });
 });
-
 
 app.get('/latest-width', (req, res) => {
   const filePath = "/home/ec2-user/width.csv";

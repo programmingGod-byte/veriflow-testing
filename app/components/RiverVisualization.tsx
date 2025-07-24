@@ -34,7 +34,7 @@ ChartJS.register(
   Filler
 );
 
-// Parse timestamp function
+// Parse timestamp function for water level data
 const parseTimestamp = (timestamp: string) => {
   // Handle format: "7/16/25 15:42"
   const [datePart, timePart] = timestamp.split(' ');
@@ -45,6 +45,16 @@ const parseTimestamp = (timestamp: string) => {
   
   return new Date(fullYear, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
 };
+
+// New function to parse timestamp from rainfall.csv
+const parseRainfallTimestamp = (dateStr: string, timeStr: string) => {
+    // Handle date: "23/07/25" and time: "17:26:22"
+    const [day, month, year] = dateStr.split('/');
+    const [hour, minute, second] = timeStr.split(':');
+    const fullYear = parseInt(year) + 2000;
+    return new Date(fullYear, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute), parseInt(second));
+};
+
 
 // Format date for API request (YYYY-MM-DD HH:mm)
 const formatDateForAPI = (date: Date) => {
@@ -57,75 +67,89 @@ const formatDateForAPI = (date: Date) => {
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 };
 
-// Generate mock rainfall data
-const generateMockRainfallData = (startDate, endDate, interval = 30) => {
-  const data = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  // Ensure we start from 00:00
-  start.setHours(0, 0, 0, 0);
-  
-  let current = new Date(start);
-  
-  while (current <= end) {
-    // Generate realistic rainfall patterns
-    let rainfall = 0;
-    const hour = current.getHours();
-    const random = Math.random();
-    
-    // Higher probability of rain in early morning and evening
-    if (hour >= 2 && hour <= 6) {
-      rainfall = random < 0.3 ? Math.random() * 15 + 5 : 0; // 30% chance, 5-20mm
-    } else if (hour >= 16 && hour <= 20) {
-      rainfall = random < 0.4 ? Math.random() * 25 + 3 : 0; // 40% chance, 3-28mm
-    } else {
-      rainfall = random < 0.15 ? Math.random() * 10 + 1 : 0; // 15% chance, 1-11mm
+// New function to fetch and parse rainfall data from CSV
+const fetchAndParseRainfallData = async () => {
+  try {
+    const response = await fetch('/rainfall.csv');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch rainfall.csv: ${response.statusText}`);
     }
+    const csvText = await response.text();
+    const lines = csvText.split('\n');
     
-    // Occasionally have heavy rain periods
-    if (random < 0.05) {
-      rainfall = Math.random() * 40 + 20; // 5% chance of heavy rain (20-60mm)
-    }
-    
-    data.push({
-      timestamp: current.toLocaleString('en-US', { 
-        month: '2-digit', 
-        day: '2-digit', 
-        year: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false 
-      }).replace(',', ''),
-      rainfall: parseFloat(rainfall.toFixed(1)),
-      parsedDate: new Date(current)
-    });
-    
-    // Increment by interval minutes
-    current = new Date(current.getTime() + interval * 60 * 1000);
+    const parsedData = lines
+      .map(line => line.trim())
+      .filter(line => line) // Filter out empty lines
+      .map(line => {
+        const [datePart, timePart, rainfallStr] = line.split(',');
+        if (!datePart || !timePart || rainfallStr === undefined) {
+          return null; // Invalid line format
+        }
+        
+        const rainfall = parseFloat(rainfallStr);
+        if (isNaN(rainfall)) {
+          return null;
+        }
+
+        return {
+          parsedDate: parseRainfallTimestamp(datePart, timePart),
+          rainfall: rainfall,
+        };
+      })
+      .filter(item => item !== null) // Filter out nulls from invalid lines
+      .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime()); // Sort by date
+
+    return parsedData;
+  } catch (error) {
+    console.error("Error fetching or parsing rainfall data:", error);
+    return []; // Return empty array on error
   }
-  
-  return data;
 };
+
+// New function to synchronize rainfall data with water level data
+const synchronizeRainfallData = (waterData, rawRainfallData) => {
+    if (!waterData.length || !rawRainfallData.length) {
+        // If no rainfall data, return an array of zeros with matching timestamps
+        return waterData.map(wd => ({
+            timestamp: wd.timestamp,
+            parsedDate: wd.parsedDate,
+            rainfall: 0,
+        }));
+    }
+
+    let rainIndex = 0;
+    return waterData.map(waterPoint => {
+        // Find the most recent rainfall measurement that occurred before or at the same time as the water level measurement
+        while (rainIndex < rawRainfallData.length - 1 && rawRainfallData[rainIndex + 1].parsedDate <= waterPoint.parsedDate) {
+            rainIndex++;
+        }
+
+        let relevantRainfall = 0;
+        // Check if the found rainfall data point is relevant (i.e., its timestamp is before or equal to the water point's timestamp)
+        if (rawRainfallData[rainIndex].parsedDate <= waterPoint.parsedDate) {
+            relevantRainfall = rawRainfallData[rainIndex].rainfall;
+        }
+
+        return {
+            timestamp: waterPoint.timestamp,
+            parsedDate: waterPoint.parsedDate,
+            rainfall: relevantRainfall,
+        };
+    });
+};
+
 
 // CSV export function
 const exportToCSV = (waterData, rainfallData, filename) => {
   const csvHeaders = ['Timestamp', 'Date', 'Time', 'Water Depth (m)', 'Rainfall (mm)', 'Status'];
   
-  // Create a map for quick rainfall lookup
-  const rainfallMap = new Map();
-  rainfallData.forEach(item => {
-    const timeKey = item.parsedDate.getTime();
-    rainfallMap.set(timeKey, item.rainfall);
-  });
-  
-  const csvData = waterData.map(item => {
+  const csvData = waterData.map((item, index) => {
     const date = item.parsedDate;
     const dateStr = date.toLocaleDateString('en-US');
     const timeStr = date.toLocaleTimeString('en-US');
     
-    // Find closest rainfall data
-    const rainfall = rainfallMap.get(date.getTime()) || 0;
+    // Since data is now synchronized, we can use the index directly
+    const rainfall = rainfallData[index]?.rainfall || 0;
     
     let status = 'Normal';
     if (item.meanDepth >= 1.7) status = 'ALARM';
@@ -160,14 +184,16 @@ const exportToCSV = (waterData, rainfallData, filename) => {
 };
 
 const WaterLevelMonitor = ({setCurrentDepth}) => {
-  const [timeRange, setTimeRange] = useState('1');
+  // MODIFICATION: Default time range changed from '1' (1 Day) to '1h' (1 Hour)
+  const [timeRange, setTimeRange] = useState('1h');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [customStartTime, setCustomStartTime] = useState('');
   const [customEndTime, setCustomEndTime] = useState('');
   const [useCustomRange, setUseCustomRange] = useState(false);
   const [data, setData] = useState([]);
-  const [rainfallData, setRainfallData] = useState([]);
+  const [rawRainfallData, setRawRainfallData] = useState([]); // Store raw parsed CSV data
+  const [rainfallData, setRainfallData] = useState([]); // Store synchronized rainfall data
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -215,6 +241,15 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
     };
   }, []);
 
+  // Fetch rainfall data once on component mount
+  useEffect(() => {
+    const loadRainfall = async () => {
+        const rainfall = await fetchAndParseRainfallData();
+        setRawRainfallData(rainfall);
+    };
+    loadRainfall();
+  }, []);
+
   useEffect(() => {
     if (context.value == null) return;
     API_BASE_URL = context?.value.machineCode
@@ -222,6 +257,25 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
     handleRefresh();
   }, [context])
   
+  // Common data processing function
+  const processAndSetData = (apiData) => {
+    const transformedData = apiData.map(item => ({
+        timestamp: item.timestamp,
+        meanDepth: 10.18-item.mean_depth,
+        parsedDate: parseTimestamp(item.timestamp)
+    }));
+    
+    const sortedData = transformedData.sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
+    
+    // Synchronize with rainfall data
+    const syncedRainfall = synchronizeRainfallData(sortedData, rawRainfallData);
+
+    setData(sortedData);
+    setRainfallData(syncedRainfall);
+    setLastUpdated(new Date());
+    setApiStatus('connected');
+  };
+
   // Fetch data by hours
   const fetchDataByHours = async (hours) => {
     try {
@@ -235,11 +289,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       const startFormatted = formatDateForAPI(startTime);
       const endFormatted = formatDateForAPI(now);
       
-      const encodedStart = encodeURIComponent(startFormatted);
-      const encodedEnd = encodeURIComponent(endFormatted);
-      let uri = `/api/newversion/depth/range?start=${encodedStart}&end=${encodedEnd}&ip=${context?.value?.machineCode}`
-      console.log(uri)
-      
+      const uri = `/api/newversion/depth/range?start=${encodeURIComponent(startFormatted)}&end=${encodeURIComponent(endFormatted)}&ip=${context?.value?.machineCode}`;
       const response = await fetch(uri);
       
       if (!response.ok) {
@@ -247,24 +297,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       }
       
       const apiData = await response.json();
-      
-      // Transform API data
-      const transformedData = apiData.map(item => ({
-        timestamp: item.timestamp,
-        meanDepth: 10.18-item.mean_depth,
-        parsedDate: parseTimestamp(item.timestamp)
-      }));
-      
-      // Sort by date
-      const sortedData = transformedData.sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
-      
-      // Generate mock rainfall data for the same period
-      const mockRainfall = generateMockRainfallData(startTime, now);
-      
-      setData(sortedData);
-      setRainfallData(mockRainfall);
-      setLastUpdated(new Date());
-      setApiStatus('connected');
+      processAndSetData(apiData);
       
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -289,26 +322,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       }
       
       const apiData = await response.json();
-      
-      // Transform API data
-      const transformedData = apiData.map(item => ({
-        timestamp: item.timestamp,
-        meanDepth: 10.18-item.mean_depth,
-        parsedDate: parseTimestamp(item.timestamp)
-      }));
-      
-      // Sort by date
-      const sortedData = transformedData.sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
-      
-      // Generate mock rainfall data for the same period
-      const now = new Date();
-      const startTime = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
-      const mockRainfall = generateMockRainfallData(startTime, now);
-      
-      setData(sortedData);
-      setRainfallData(mockRainfall);
-      setLastUpdated(new Date());
-      setApiStatus('connected');
+      processAndSetData(apiData);
       
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -329,10 +343,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       const startFormatted = formatDateForAPI(startDateTime);
       const endFormatted = formatDateForAPI(endDateTime);
       
-      const encodedStart = encodeURIComponent(startFormatted);
-      const encodedEnd = encodeURIComponent(endFormatted);
-      let uri = `/api/newversion/depth/range?start=${encodeURIComponent(startFormatted)}&end=${encodeURIComponent(endFormatted)}&ip=${context.value.machineCode}`
-      console.log(uri)
+      const uri = `/api/newversion/depth/range?start=${encodeURIComponent(startFormatted)}&end=${encodeURIComponent(endFormatted)}&ip=${context.value.machineCode}`;
       const response = await fetch(uri);
       
       if (!response.ok) {
@@ -340,24 +351,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       }
       
       const apiData = await response.json();
-      
-      // Transform API data
-      const transformedData = apiData.map(item => ({
-        timestamp: item.timestamp,
-        meanDepth: 10.18-item.mean_depth,
-        parsedDate: parseTimestamp(item.timestamp)
-      }));
-      
-      // Sort by date
-      const sortedData = transformedData.sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
-      
-      // Generate mock rainfall data for the same period
-      const mockRainfall = generateMockRainfallData(startDateTime, endDateTime);
-      
-      setData(sortedData);
-      setRainfallData(mockRainfall);
-      setLastUpdated(new Date());
-      setApiStatus('connected');
+      processAndSetData(apiData);
       
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -401,34 +395,29 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
     }
   };
   
-  // Load initial data
+  // MODIFICATION: Combined initial load and time range change effects into one.
+  // This ensures the initial fetch respects the default '1h' state.
   useEffect(() => {
-    fetchDataByDays(1);
-  }, []);
-  
-  // Update data when time range changes
-  useEffect(() => {
-    if (!useCustomRange && timeRange !== 'custom') {
-      const selectedOption = timeRangeOptions.find(opt => opt.value === timeRange);
-      if (selectedOption?.hours) {
-        fetchDataByHours(selectedOption.hours);
-      } else if (selectedOption?.days) {
-        fetchDataByDays(selectedOption.days);
-      }
+    if (rawRainfallData.length === 0) return; // Don't fetch until rainfall data is ready
+
+    if (useCustomRange) {
+        if (customStartDate && customEndDate) {
+            const startDateTime = new Date(`${customStartDate}T${customStartTime || '00:00'}`);
+            const endDateTime = new Date(`${customEndDate}T${customEndTime || '23:59'}`);
+            if (startDateTime <= endDateTime) {
+                fetchDataByDateRange(startDateTime, endDateTime);
+            }
+        }
+    } else if (timeRange !== 'custom') {
+        const selectedOption = timeRangeOptions.find(opt => opt.value === timeRange);
+        if (selectedOption?.hours) {
+            fetchDataByHours(selectedOption.hours);
+        } else if (selectedOption?.days) {
+            fetchDataByDays(selectedOption.days);
+        }
     }
-  }, [timeRange, useCustomRange]);
+  }, [timeRange, useCustomRange, customStartDate, customEndDate, customStartTime, customEndTime, rawRainfallData]);
   
-  // Handle custom date range
-  useEffect(() => {
-    if (useCustomRange && customStartDate && customEndDate) {
-      const startDateTime = new Date(`${customStartDate}T${customStartTime || '00:00'}`);
-      const endDateTime = new Date(`${customEndDate}T${customEndTime || '23:59'}`);
-      
-      if (startDateTime <= endDateTime) {
-        fetchDataByDateRange(startDateTime, endDateTime);
-      }
-    }
-  }, [customStartDate, customEndDate, customStartTime, customEndTime, useCustomRange]);
   
   // Get current status based on latest water level
   const getCurrentStatus = () => {
@@ -460,7 +449,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
     const alertCount = depths.filter(d => d >= ALERT_LEVEL && d < ALARM_LEVEL).length;
     const alarmCount = depths.filter(d => d >= ALARM_LEVEL).length;
     
-    // Rainfall statistics
+    // Rainfall statistics from the synchronized data
     const rainfalls = rainfallData.map(d => d.rainfall);
     const totalRainfall = rainfalls.reduce((a, b) => a + b, 0);
     const maxRainfall = rainfalls.length > 0 ? Math.max(...rainfalls) : 0;
@@ -506,21 +495,27 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
         displayColors: true,
         callbacks: {
           title: (context) => {
-            const dataPoint = data[context[0].dataIndex];
-            if (dataPoint) {
-              return `${dataPoint.parsedDate.toLocaleDateString()} at ${dataPoint.parsedDate.toLocaleTimeString()}`;
+            // Need to find the original data point from the 'data' state as chart data might contain nulls
+            const label = context[0].label;
+            if (!label) return ''; // Tooltip for a gap
+            const originalDataPoint = data.find(d => d.parsedDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) === label);
+            if (originalDataPoint) {
+              return `${originalDataPoint.parsedDate.toLocaleDateString()} at ${originalDataPoint.parsedDate.toLocaleTimeString()}`;
             }
-            return '';
+            return label;
           },
           label: (context) => {
             if (context.dataset.label === 'Water Level') {
               const depth = context.parsed.y;
+              if (depth === null) return null;
               let status = 'Normal';
               if (depth >= ALARM_LEVEL) status = 'ALARM';
               else if (depth >= ALERT_LEVEL) status = 'ALERT';
               return `Water Level: ${depth.toFixed(3)}m (${status})`;
             } else if (context.dataset.label === 'Rainfall') {
-              return `Rainfall: ${context.parsed.y.toFixed(1)}mm`;
+              const rain = context.parsed.y;
+              if (rain === null) return null;
+              return `Rainfall: ${rain.toFixed(1)}mm`;
             }
             return '';
           }
@@ -579,7 +574,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
         display: true,
         position: 'right',
         beginAtZero: true,
-        max: 60, // Adjust as needed for typical rainfall values
+        max: 10, // Adjust as needed for typical rainfall values
         title: {
           display: true,
           text: 'Rainfall (mm)',
@@ -615,32 +610,57 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
     }
   };
 
+  // MODIFICATION: Logic to process data for chart, inserting nulls for time gaps > 20 mins.
+  const TIME_GAP_THRESHOLD = 20 * 60 * 1000; // 20 minutes in milliseconds
+  const chartLabels = [];
+  const chartWaterData = [];
+  const chartRainfallData = [];
+  const chartAlertData = [];
+  const chartAlarmData = [];
+
+  if (data.length > 0) {
+      for (let i = 0; i < data.length; i++) {
+          // Add the current data point
+          chartLabels.push(data[i].parsedDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }));
+          chartWaterData.push(data[i].meanDepth);
+          chartRainfallData.push(rainfallData[i]?.rainfall ?? null);
+          chartAlertData.push(ALERT_LEVEL);
+          chartAlarmData.push(ALARM_LEVEL);
+
+          // Check the gap to the *next* point
+          if (i < data.length - 1) {
+              const timeDiff = data[i + 1].parsedDate.getTime() - data[i].parsedDate.getTime();
+              if (timeDiff > TIME_GAP_THRESHOLD) {
+                  // Insert a null value to create a gap in the chart
+                  chartLabels.push(''); // Add an empty label for the gap
+                  chartWaterData.push(null);
+                  chartRainfallData.push(null);
+                  chartAlertData.push(null);
+                  chartAlarmData.push(null);
+              }
+          }
+      }
+  }
+
   // Prepare chart data with gradient
   const chartData: ChartData<'line'> = {
-    labels: data.map(d => {
-      const date = d.parsedDate;
-      return date.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: false
-      });
-    }),
+    labels: chartLabels,
     datasets: [
       // Water Level Line
       {
         type: 'line' as const,
         label: 'Water Level',
-        data: data.map(d => d.meanDepth),
+        data: chartWaterData,
         borderColor: '#0b5ed7',
         borderWidth: 3,
         pointRadius: 2,
         pointBackgroundColor: '#0b5ed7',
         fill: true,
+        spanGaps: false, // Explicitly prevent line from connecting across nulls
         backgroundColor: (context) => {
             const chart = context.chart;
             const {ctx, chartArea} = chart;
             if (!chartArea) {
-                // This case happens on initial render or resizing
                 return null;
             }
             const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
@@ -655,7 +675,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       {
         type: 'line' as const,
         label: 'Alert Level',
-        data: data.map(() => ALERT_LEVEL),
+        data: chartAlertData,
         borderColor: '#f59e0b',
         borderWidth: 2,
         borderDash: [5, 5],
@@ -667,7 +687,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       {
         type: 'line' as const,
         label: 'Alarm Level',
-        data: data.map(() => ALARM_LEVEL),
+        data: chartAlarmData,
         borderColor: '#dc2626',
         borderWidth: 2,
         borderDash: [5, 5],
@@ -679,7 +699,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       {
         type: 'bar' as const,
         label: 'Rainfall',
-        data: rainfallData.map(d => d.rainfall),
+        data: chartRainfallData,
         backgroundColor: 'rgba(21, 163, 201, 0.6)',
         borderColor: 'rgba(21, 163, 201, 1)',
         borderWidth: 1,
@@ -783,7 +803,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
             <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-lg p-4 border border-teal-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-teal-600">Max Rainfall (30min)</p>
+                  <p className="text-sm font-medium text-teal-600">Max Rainfall (Event)</p>
                   <p className="text-2xl font-bold text-teal-900">{statistics.maxRainfall.toFixed(1)}mm</p>
                 </div>
                 <CloudRain className="w-8 h-8 text-teal-600" />
