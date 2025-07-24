@@ -66,21 +66,21 @@ export default function Home() {
   // Background slider for flood scenes
   const floodScenes = [
     {
-      title: "River Monitoring",
+      title: "Water Body Monitoring",
       description: "Real-time water level detection",
-      bgGradient: "from-blue-600 via-blue-500 to-cyan-400",
+      bgGradient: "from-slate-600 via-blue-600 to-indigo-600",
       bgImage: "/monitoring-pattern.svg"
     },
     {
       title: "Flood Alerts", 
       description: "Early warning systems active",
-      bgGradient: "from-purple-600 via-blue-600 to-cyan-500",
+      bgGradient: "from-indigo-600 via-purple-600 to-blue-600",
       bgImage: "/flood-pattern.svg"
     },
     {
       title: "Data Analytics",
       description: "Live data visualization", 
-      bgGradient: "from-indigo-600 via-purple-600 to-blue-500",
+      bgGradient: "from-blue-700 via-indigo-600 to-purple-600",
       bgImage: "/hero-3d-bg.svg"
     }
   ];
@@ -129,8 +129,8 @@ export default function Home() {
       
     <div className={`min-h-screen transition-all duration-500 overflow-hidden ${
       isDarkMode 
-        ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800' 
-        : 'bg-gradient-to-br from-blue-50 to-cyan-50'
+        ? 'bg-gradient-to-br from-slate-800 via-slate-700 to-blue-800' 
+        : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'
     }`}>
       {/* Dark Mode Toggle */}
       <motion.button
@@ -182,7 +182,7 @@ export default function Home() {
               />
               {/* Enhanced Gradient Overlay */}
               <div className={`absolute inset-0 bg-gradient-to-br ${scene.bgGradient} ${
-                isDarkMode ? 'opacity-75' : 'opacity-65'
+                isDarkMode ? 'opacity-60' : 'opacity-55'
               }`} />
               {/* Advanced 3D Pattern Overlay */}
               <div 
@@ -261,72 +261,6 @@ export default function Home() {
               }}
             />
 
-            {/* Floating Debris */}
-            <motion.circle 
-              cx="200" cy="380" r="4" 
-              fill={isDarkMode ? "#374151" : "#6b7280"}
-              animate={{ 
-                cx: [200, 250, 200],
-                cy: [380, 370, 380]
-              }}
-              transition={{ 
-                duration: 6,
-                repeat: Infinity,
-                repeatType: "reverse"
-              }}
-            />
-            <motion.circle 
-              cx="600" cy="420" r="3" 
-              fill={isDarkMode ? "#374151" : "#6b7280"}
-              animate={{ 
-                cx: [600, 650, 600],
-                cy: [420, 410, 420]
-              }}
-              transition={{ 
-                duration: 5,
-                repeat: Infinity,
-                repeatType: "reverse",
-                delay: 1
-              }}
-            />
-            <motion.circle 
-              cx="900" cy="400" r="5" 
-              fill={isDarkMode ? "#374151" : "#6b7280"}
-              animate={{ 
-                cx: [900, 950, 900],
-                cy: [400, 390, 400]
-              }}
-              transition={{ 
-                duration: 7,
-                repeat: Infinity,
-                repeatType: "reverse",
-                delay: 2
-              }}
-            />
-
-            {/* Rain Effect */}
-            {[...Array(20)].map((_, i) => (
-              <motion.line
-                key={i}
-                x1={i * 60}
-                y1={0}
-                x2={i * 60 + 2}
-                y2={20}
-                stroke={isDarkMode ? "#60a5fa" : "#3b82f6"}
-                strokeWidth="1"
-                opacity="0.6"
-                animate={{
-                  y1: [0, 800],
-                  y2: [20, 820]
-                }}
-                transition={{
-                  duration: 2 + (i % 3),
-                  repeat: Infinity,
-                  ease: "linear",
-                  delay: (i % 5) * 0.2
-                }}
-              />
-            ))}
           </svg>
         </motion.div>
 
@@ -359,13 +293,17 @@ export default function Home() {
         
         <div className={`absolute top-0 left-0 right-0 h-64 bg-gradient-to-b ${
           isDarkMode 
-            ? 'from-blue-900/20 to-transparent' 
-            : 'from-blue-500/10 to-transparent'
+            ? 'from-slate-800/20 to-transparent' 
+            : 'from-slate-200/10 to-transparent'
         } z-0`} />
         
         <div className="container mx-auto px-4 z-10 pt-24 relative">
           {/* Add backdrop blur for better text readability */}
-          <div className="absolute inset-0 backdrop-blur-sm bg-black/10 rounded-lg -z-10" />
+          <div className={`absolute inset-0 rounded-lg -z-10 ${
+            isDarkMode 
+              ? 'backdrop-blur-sm bg-black/10' 
+              : 'bg-white/20'
+          }`} />
           <motion.div 
             className="grid md:grid-cols-2 gap-8 items-center"
             initial="hidden"
@@ -374,15 +312,15 @@ export default function Home() {
           >
           <motion.div variants={fadeIn} className="text-center md:text-left">
               <motion.h1 
-                className={`text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r ${
+                className={`text-4xl md:text-6xl font-bold mb-4 ${
                   isDarkMode 
-                    ? 'from-white to-cyan-300' 
-                    : 'from-blue-700 to-cyan-600'
-                } bg-clip-text text-transparent`}
+                    ? 'text-white' 
+                    : 'text-black'
+                }`}
                 style={{
                   textShadow: isDarkMode 
-                    ? '0 2px 4px rgba(0, 0, 0, 0.8), 0 4px 8px rgba(0, 0, 0, 0.6)' 
-                    : '0 2px 4px rgba(255, 255, 255, 0.8), 0 4px 8px rgba(255, 255, 255, 0.4)'
+                    ? '0 2px 4px rgba(0, 0, 0, 0.8)' 
+                    : '0 1px 2px rgba(255, 255, 255, 0.8)'
                 }}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -393,12 +331,12 @@ export default function Home() {
               
               <motion.p 
                 className={`text-lg md:text-xl mb-8 ${
-                  isDarkMode ? 'text-gray-200' : 'text-gray-800'
+                  isDarkMode ? 'text-gray-200' : 'text-black'
                 }`}
                 style={{
                   textShadow: isDarkMode 
-                    ? '0 1px 3px rgba(0, 0, 0, 0.8), 0 2px 6px rgba(0, 0, 0, 0.4)' 
-                    : '0 1px 3px rgba(255, 255, 255, 0.8), 0 2px 6px rgba(255, 255, 255, 0.2)'
+                    ? '0 1px 2px rgba(0, 0, 0, 0.7)' 
+                    : '0 1px 2px rgba(255, 255, 255, 0.7)'
                 }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -420,13 +358,13 @@ export default function Home() {
                     href="/realtime-data" 
                     className={`px-8 py-3 rounded-full font-medium transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-opacity-50 shadow-lg inline-block border ${
                       isDarkMode 
-                        ? 'bg-blue-500 hover:bg-blue-600 text-white focus:ring-blue-400 border-blue-400 shadow-blue-500/25' 
-                        : 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500 border-blue-500 shadow-blue-600/25'
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-400 border-blue-500 shadow-blue-600/25' 
+                        : 'bg-blue-700 hover:bg-blue-800 text-white focus:ring-blue-500 border-blue-600 shadow-blue-700/25'
                     }`}
                     style={{
                       boxShadow: isDarkMode 
-                        ? '0 4px 14px 0 rgba(59, 130, 246, 0.4), 0 2px 4px 0 rgba(0, 0, 0, 0.3)' 
-                        : '0 4px 14px 0 rgba(37, 99, 235, 0.4), 0 2px 4px 0 rgba(0, 0, 0, 0.2)'
+                        ? '0 4px 14px 0 rgba(37, 99, 235, 0.4), 0 2px 4px 0 rgba(0, 0, 0, 0.3)' 
+                        : '0 4px 14px 0 rgba(29, 78, 216, 0.4), 0 2px 4px 0 rgba(0, 0, 0, 0.2)'
                     }}
                   >
                     View Live Data
@@ -436,13 +374,13 @@ export default function Home() {
                     href="/auth" 
                     className={`px-8 py-3 rounded-full font-medium transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-opacity-50 shadow-lg inline-block border ${
                       isDarkMode 
-                        ? 'bg-blue-500 hover:bg-blue-600 text-white focus:ring-blue-400 border-blue-400 shadow-blue-500/25' 
-                        : 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500 border-blue-500 shadow-blue-600/25'
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-400 border-blue-500 shadow-blue-600/25' 
+                        : 'bg-blue-700 hover:bg-blue-800 text-white focus:ring-blue-500 border-blue-600 shadow-blue-700/25'
                     }`}
                     style={{
                       boxShadow: isDarkMode 
-                        ? '0 4px 14px 0 rgba(59, 130, 246, 0.4), 0 2px 4px 0 rgba(0, 0, 0, 0.3)' 
-                        : '0 4px 14px 0 rgba(37, 99, 235, 0.4), 0 2px 4px 0 rgba(0, 0, 0, 0.2)'
+                        ? '0 4px 14px 0 rgba(37, 99, 235, 0.4), 0 2px 4px 0 rgba(0, 0, 0, 0.3)' 
+                        : '0 4px 14px 0 rgba(29, 78, 216, 0.4), 0 2px 4px 0 rgba(0, 0, 0, 0.2)'
                     }}
                   >
                     Sign In to View Data
@@ -453,15 +391,15 @@ export default function Home() {
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Link 
                     href="/about" 
-                    className={`px-8 py-3 rounded-full font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-opacity-50 inline-block backdrop-blur-sm ${
+                    className={`px-8 py-3 rounded-full font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-opacity-50 inline-block ${
                       isDarkMode 
-                        ? 'border-2 border-blue-400 text-blue-300 hover:bg-blue-900/50 focus:ring-blue-400 bg-blue-900/20' 
-                        : 'border-2 border-blue-600 text-blue-700 hover:bg-blue-50/80 focus:ring-blue-500 bg-white/20'
+                        ? 'backdrop-blur-sm border-2 border-blue-400 text-blue-300 hover:bg-blue-900/50 focus:ring-blue-400 bg-blue-900/30' 
+                        : 'border-2 border-blue-700 text-blue-800 hover:bg-blue-50/80 focus:ring-blue-600 bg-white/60'
                     }`}
                     style={{
                       boxShadow: isDarkMode 
-                        ? '0 4px 14px 0 rgba(59, 130, 246, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.3)' 
-                        : '0 4px 14px 0 rgba(37, 99, 235, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1)'
+                        ? '0 4px 14px 0 rgba(37, 99, 235, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.3)' 
+                        : '0 4px 14px 0 rgba(29, 78, 216, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1)'
                     }}
                   >
                     Learn More
@@ -517,22 +455,22 @@ export default function Home() {
                     } rounded-xl shadow-2xl flex items-center justify-center overflow-hidden relative transform-gpu`}
                     style={{
                       backdropFilter: 'blur(10px)',
-                      border: isDarkMode ? '2px solid rgba(0, 212, 255, 0.3)' : '2px solid rgba(14, 165, 233, 0.3)',
+                      border: isDarkMode ? '2px solid rgba(59, 130, 246, 0.3)' : '2px solid rgba(29, 78, 216, 0.3)',
                       boxShadow: isDarkMode 
-                        ? '0 25px 50px -12px rgba(0, 212, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                        : '0 25px 50px -12px rgba(14, 165, 233, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                        ? '0 25px 50px -12px rgba(59, 130, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                        : '0 25px 50px -12px rgba(29, 78, 216, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
                     }}
                     animate={{ 
                       boxShadow: [
                         isDarkMode 
-                          ? "0 25px 50px -12px rgba(0, 212, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)" 
-                          : "0 25px 50px -12px rgba(14, 165, 233, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+                          ? "0 25px 50px -12px rgba(59, 130, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)" 
+                          : "0 25px 50px -12px rgba(29, 78, 216, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
                         isDarkMode 
-                          ? "0 35px 60px -15px rgba(0, 212, 255, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.15)"
-                          : "0 35px 60px -15px rgba(14, 165, 233, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.25)",
+                          ? "0 35px 60px -15px rgba(59, 130, 246, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.15)"
+                          : "0 35px 60px -15px rgba(29, 78, 216, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.25)",
                         isDarkMode 
-                          ? "0 25px 50px -12px rgba(0, 212, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
-                          : "0 25px 50px -12px rgba(14, 165, 233, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
+                          ? "0 25px 50px -12px rgba(59, 130, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+                          : "0 25px 50px -12px rgba(29, 78, 216, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
                       ],
                       transform: [
                         "perspective(1000px) rotateX(0deg) rotateY(0deg)",
@@ -575,16 +513,16 @@ export default function Home() {
                       <motion.div 
                         className="w-3/4 h-3/4 rounded-lg backdrop-blur-sm flex flex-col items-center justify-center p-6 border transform-gpu"
                         style={{
-                          backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.6)' : 'rgba(255, 255, 255, 0.3)',
-                          borderColor: isDarkMode ? 'rgba(0, 212, 255, 0.4)' : 'rgba(255, 255, 255, 0.4)',
+                          backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.6)' : 'rgba(255, 255, 255, 0.3)',
+                          borderColor: isDarkMode ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255, 255, 255, 0.4)',
                           borderWidth: '1px',
                           boxShadow: isDarkMode 
-                            ? 'inset 0 2px 4px rgba(0, 212, 255, 0.1), 0 8px 32px rgba(0, 0, 0, 0.3)'
+                            ? 'inset 0 2px 4px rgba(59, 130, 246, 0.1), 0 8px 32px rgba(0, 0, 0, 0.3)'
                             : 'inset 0 2px 4px rgba(255, 255, 255, 0.2), 0 8px 32px rgba(0, 0, 0, 0.1)'
                         }}
                         animate={{ 
                           backgroundColor: isDarkMode 
-                            ? ["rgba(15, 23, 42, 0.6)", "rgba(15, 23, 42, 0.8)", "rgba(15, 23, 42, 0.6)"]
+                            ? ["rgba(30, 41, 59, 0.6)", "rgba(30, 41, 59, 0.8)", "rgba(30, 41, 59, 0.6)"]
                             : ["rgba(255, 255, 255, 0.3)", "rgba(255, 255, 255, 0.4)", "rgba(255, 255, 255, 0.3)"],
                           transform: [
                             "perspective(500px) rotateX(0deg)",
@@ -684,12 +622,12 @@ export default function Home() {
                   {/* Enhanced 3D glow effects */}
                   <motion.div 
                     className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full border-2 ${
-                      isDarkMode ? 'border-cyan-300/30' : 'border-blue-500/30'
+                      isDarkMode ? 'border-blue-300/30' : 'border-blue-600/30'
                     }`}
                     style={{
                       boxShadow: isDarkMode 
-                        ? '0 0 60px rgba(6, 182, 212, 0.3), inset 0 0 60px rgba(6, 182, 212, 0.1)'
-                        : '0 0 60px rgba(59, 130, 246, 0.3), inset 0 0 60px rgba(59, 130, 246, 0.1)'
+                        ? '0 0 60px rgba(59, 130, 246, 0.3), inset 0 0 60px rgba(59, 130, 246, 0.1)'
+                        : '0 0 60px rgba(29, 78, 216, 0.3), inset 0 0 60px rgba(29, 78, 216, 0.1)'
                     }}
                     animate={{ 
                       scale: [1, 1.1, 1],
@@ -705,7 +643,7 @@ export default function Home() {
                   
                   <motion.div 
                     className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border ${
-                      isDarkMode ? 'border-blue-400/20' : 'border-cyan-400/20'
+                      isDarkMode ? 'border-blue-400/20' : 'border-blue-500/20'
                     }`}
                     animate={{ 
                       scale: [1.1, 1, 1.1],
@@ -772,8 +710,8 @@ export default function Home() {
           </div>
           <div className="text-center mt-2">
             <motion.p 
-              className={`text-sm font-medium ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-700'
+              className={`text-lg font-semibold ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
               }`}
               key={currentSlide}
               initial={{ opacity: 0, y: 10 }}
@@ -782,8 +720,8 @@ export default function Home() {
             >
               {floodScenes[currentSlide].title}
             </motion.p>
-            <p className={`text-xs ${
-              isDarkMode ? 'text-gray-400' : 'text-gray-600'
+            <p className={`text-sm ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-600'
             }`}>
               {floodScenes[currentSlide].description}
             </p>
@@ -806,7 +744,7 @@ export default function Home() {
             variants={fadeIn}
           >
             <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${
-              isDarkMode ? 'text-blue-300' : 'text-blue-900'
+              isDarkMode ? 'text-white' : 'text-gray-900'
             }`}>
               Advanced Flood Detection Features
             </h2>
@@ -871,7 +809,7 @@ export default function Home() {
               transition={{ duration: 0.6 }}
             >
               <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${
-                isDarkMode ? 'text-blue-300' : 'text-blue-900'
+                isDarkMode ? 'text-white' : 'text-gray-900'
               }`}>
                 Powerful Data Visualization
               </h2>
@@ -895,7 +833,7 @@ export default function Home() {
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-1/2 p-8 flex flex-col justify-center">
                   <h3 className={`text-2xl font-bold mb-4 ${
-                    isDarkMode ? 'text-blue-300' : 'text-blue-900'
+                    isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>
                     Monitor River Flow in Real-Time
                   </h3>
@@ -948,7 +886,7 @@ export default function Home() {
                   }`}>
                     <div className="flex justify-between mb-4">
                       <h4 className={`font-bold ${
-                        isDarkMode ? 'text-blue-300' : 'text-blue-900'
+                        isDarkMode ? 'text-white' : 'text-gray-900'
                       }`}>
                         Water Level Monitor
                       </h4>
@@ -988,13 +926,13 @@ export default function Home() {
                         isDarkMode ? 'bg-blue-900/50' : 'bg-blue-50'
                       }`}>
                         <p className={`font-medium ${
-                          isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                          isDarkMode ? 'text-gray-300' : 'text-blue-600'
                         }`}>
                           Current Level
                         </p>
                         <motion.p 
                           className={`text-2xl font-bold ${
-                            isDarkMode ? 'text-blue-200' : 'text-blue-900'
+                            isDarkMode ? 'text-white' : 'text-blue-900'
                           }`}
                           animate={{ opacity: [1, 0.7, 1] }}
                           transition={{ duration: 2, repeat: Infinity }}
@@ -1006,12 +944,12 @@ export default function Home() {
                         isDarkMode ? 'bg-green-900/50' : 'bg-green-50'
                       }`}>
                         <p className={`font-medium ${
-                          isDarkMode ? 'text-green-300' : 'text-green-600'
+                          isDarkMode ? 'text-gray-300' : 'text-green-600'
                         }`}>
                           Status
                         </p>
                         <p className={`text-2xl font-bold ${
-                          isDarkMode ? 'text-green-200' : 'text-green-900'
+                          isDarkMode ? 'text-white' : 'text-green-900'
                         }`}>
                           Normal
                         </p>
