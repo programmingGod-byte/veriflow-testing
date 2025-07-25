@@ -337,11 +337,14 @@ export default function RealtimeDataPage() {
 
             {/* Temperature Chart */}
             <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100 mt-6">
-              <h2 className="text-xl font-semibold mb-4 text-slate-700">Temperature Over Time</h2>
+              
               <>
               {
                 iseUserAdmin  && (
+                  <>
+                  <h2 className="text-xl font-semibold mb-4 text-slate-700">Temperature Over Time</h2>
                   <TemperatureChart />
+                  </>
                 )
               }
               </>
