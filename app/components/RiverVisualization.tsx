@@ -472,7 +472,62 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       rainfallReadings: filteredRainfallData.length
     };
   };
+
+  const createCombinedTimeline = () => {
+    const allDataPoints = [];
+    
+    // Add water level data points
+    data.forEach(item => {
+      allDataPoints.push({
+        timestamp: item.parsedDate.getTime(),
+        parsedDate: item.parsedDate,
+        waterLevel: item.meanDepth,
+        rainfall: null,
+      });
+    });
+    
+    // Add rainfall data points
+    filteredRainfallData.forEach(item => {
+      allDataPoints.push({
+        timestamp: item.parsedDate.getTime(),
+        parsedDate: item.parsedDate,
+        waterLevel: null,
+        rainfall: item.rainfall,
+      });
+    });
+    
+    // Sort by timestamp
+    allDataPoints.sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Create chart data arrays by iterating through the sorted points
+    const chartLabels = [];
+    const chartWaterData = [];
+    const chartRainfallData = [];
+    const chartAlertData = [];
+    const chartAlarmData = [];
+    
+    allDataPoints.forEach(point => {
+      const timeLabel = point.parsedDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      chartLabels.push(timeLabel);
+      chartWaterData.push(point.waterLevel);
+      chartRainfallData.push(point.rainfall);
+      chartAlertData.push(ALERT_LEVEL);
+      chartAlarmData.push(ALARM_LEVEL);
+    });
+    
+    return {
+      labels: chartLabels,
+      waterData: chartWaterData,
+      rainfallData: chartRainfallData,
+      alertData: chartAlertData,
+      alarmData: chartAlarmData,
+      combinedData: allDataPoints // Return the crucial combined array
+    };
+  };
   
+  // **MODIFICATION START: The 'chartTimelineData' variable will hold the combined data used by the tooltip.**
+  const chartTimelineData = createCombinedTimeline();
+
   // Chart configuration to match the reference image style
   const chartOptions: ChartOptions<'line'> = {
     responsive: true,
@@ -500,23 +555,18 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
         cornerRadius: 8,
         displayColors: true,
         callbacks: {
+          // **MODIFICATION START: This function now uses the combined data array for lookups.**
           title: (context) => {
-            const datasetIndex = context[0].datasetIndex;
             const pointIndex = context[0].dataIndex;
-            
-            if (context[0].dataset.label === 'Water Level') {
-              const dataPoint = data[pointIndex];
-              if (dataPoint) {
-                return `${dataPoint.parsedDate.toLocaleDateString()} at ${dataPoint.parsedDate.toLocaleTimeString()}`;
-              }
-            } else if (context[0].dataset.label === 'Rainfall') {
-              const dataPoint = filteredRainfallData[pointIndex];
-              if (dataPoint) {
-                return `${dataPoint.parsedDate.toLocaleDateString()} at ${dataPoint.parsedDate.toLocaleTimeString()}`;
-              }
+            // Use the combined data array which is guaranteed to have the correct index.
+            const dataPoint = chartTimelineData.combinedData[pointIndex];
+            if (dataPoint) {
+              const date = new Date(dataPoint.timestamp);
+              return `${date.toLocaleDateString()} at ${date.toLocaleTimeString()}`;
             }
             return '';
           },
+          // **MODIFICATION END**
           label: (context) => {
             if (context.dataset.label === 'Water Level') {
               const depth = context.parsed.y;
@@ -623,92 +673,26 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
     }
   };
 
+  // **MODIFICATION START: This function now returns the combined data array as well.**
   // Create combined timeline for chart display
-  const createCombinedTimeline = () => {
-    const allDataPoints = [];
-    
-    // Add water level data points
-    data.forEach(item => {
-      allDataPoints.push({
-        timestamp: item.parsedDate.getTime(),
-        time: item.parsedDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        waterLevel: item.meanDepth,
-        rainfall: null,
-        type: 'water'
-      });
-    });
-    
-    // Add rainfall data points
-    filteredRainfallData.forEach(item => {
-      allDataPoints.push({
-        timestamp: item.parsedDate.getTime(),
-        time: item.parsedDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        waterLevel: null,
-        rainfall: item.rainfall,
-        type: 'rainfall'
-      });
-    });
-    
-    // Sort by timestamp
-    allDataPoints.sort((a, b) => a.timestamp - b.timestamp);
-    
-    // Create chart data arrays
-    const TIME_GAP_THRESHOLD = 90 * 60 * 1000; // 90 minutes in milliseconds
-    const chartLabels = [];
-    const chartWaterData = [];
-    const chartRainfallData = [];
-    const chartAlertData = [];
-    const chartAlarmData = [];
-    
-    for (let i = 0; i < allDataPoints.length; i++) {
-      const point = allDataPoints[i];
-      
-      chartLabels.push(point.time);
-      chartWaterData.push(point.waterLevel);
-      chartRainfallData.push(point.rainfall);
-      chartAlertData.push(ALERT_LEVEL);
-      chartAlarmData.push(ALARM_LEVEL);
-      
-      // Check gap to next point
-      if (i < allDataPoints.length - 1) {
-        const timeDiff = allDataPoints[i + 1].timestamp - point.timestamp;
-        if (timeDiff > TIME_GAP_THRESHOLD) {
-          // Insert gap
-          chartLabels.push('');
-          chartWaterData.push(null);
-          chartRainfallData.push(null);
-          chartAlertData.push(null);
-          chartAlarmData.push(null);
-        }
-      }
-    }
-    
-    return {
-      labels: chartLabels,
-      waterData: chartWaterData,
-      rainfallData: chartRainfallData,
-      alertData: chartAlertData,
-      alarmData: chartAlarmData
-    };
-  };
-
-  const chartTimeline = createCombinedTimeline();
+  
+  // **MODIFICATION END**
 
   // Prepare chart data with gradient
   const chartData: ChartData<'line'> = {
-    labels: chartTimeline.labels,
+    labels: chartTimelineData.labels,
     datasets: [
       // Water Level Line
       {
         type: 'line' as const,
         label: 'Water Level',
-        data: chartTimeline.waterData,
+        data: chartTimelineData.waterData,
         borderColor: '#0b5ed7',
         borderWidth: 3,
         pointRadius: 2,
         pointBackgroundColor: '#0b5ed7',
         fill: true,
-        spanGaps: false, // Explicitly prevent line from connecting across nulls
+        spanGaps: true, // Connect lines even if some data points are null
         backgroundColor: (context) => {
             const chart = context.chart;
             const {ctx, chartArea} = chart;
@@ -727,7 +711,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       {
         type: 'line' as const,
         label: 'Alert Level',
-        data: chartTimeline.alertData,
+        data: chartTimelineData.alertData,
         borderColor: '#f59e0b',
         borderWidth: 2,
         borderDash: [5, 5],
@@ -739,7 +723,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       {
         type: 'line' as const,
         label: 'Alarm Level',
-        data: chartTimeline.alarmData,
+        data: chartTimelineData.alarmData,
         borderColor: '#dc2626',
         borderWidth: 2,
         borderDash: [5, 5],
@@ -751,7 +735,7 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
       {
         type: 'bar' as const,
         label: 'Rainfall',
-        data: chartTimeline.rainfallData,
+        data: chartTimelineData.rainfallData,
         backgroundColor: 'rgba(21, 163, 201, 0.6)',
         borderColor: 'rgba(21, 163, 201, 1)',
         borderWidth: 1,
