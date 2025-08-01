@@ -275,6 +275,42 @@ const MediaDebugInfo = ({ media, showDebug = false }) => {
   );
 };
 
+// ✅ NEW: Helper function to parse filenames into a human-readable format.
+const formatMediaName = (name) => {
+  // Matches filenames like "anything_YYYYMMDD_HHMMSS.extension"
+  const match = name.match(/_(\d{8})_(\d{6})\./);
+  if (match && match[1] && match[2]) {
+    const datePart = match[1]; // "20250623"
+    const timePart = match[2]; // "183935"
+
+    const year = parseInt(datePart.substring(0, 4), 10);
+    const month = parseInt(datePart.substring(4, 6), 10);
+    const day = parseInt(datePart.substring(6, 8), 10);
+
+    const hour = parseInt(timePart.substring(0, 2), 10);
+    const minute = parseInt(timePart.substring(2, 4), 10);
+    const second = parseInt(timePart.substring(4, 6), 10);
+
+    // Create a Date object. Note: Month is 0-indexed in the JS Date constructor.
+    const date = new Date(year, month - 1, day, hour, minute, second);
+
+    // Check if the created date is valid before formatting
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    }
+  }
+  // Fallback to the original name if parsing fails
+  return name;
+};
+
+
 export default function MediaViewer() {
   const [activeTab, setActiveTab] = useState('image');
   const [activeOption, setActiveOption] = useState('latest');
@@ -299,9 +335,6 @@ export default function MediaViewer() {
   const [BASE_URL, setBaseUrl] = useState("");
   const {value, setValue} = useContext(MyContext);
   const [STATIC_VIDEO_URL,setStaticVideo] = useState("")
-  // --- MODIFICATION: Static URI for the video ---
-  // Replace this with the actual static URL of your video file.
-  // const STATIC_VIDEO_URL = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   const STATIC_VIDEO_NAME = " Video.mp4";
 
 
@@ -309,51 +342,46 @@ export default function MediaViewer() {
   const getMimeType = (filename) => {
     const ext = filename.toLowerCase().split('.').pop();
     const mimeTypes = {
-      // Video formats - prioritize widely supported formats
-      'mp4': 'video/mp4',
-      'webm': 'video/webm',
-      'ogg': 'video/ogg',
-      'ogv': 'video/ogg',
-      // These formats may need conversion on the server side
-      'avi': 'video/mp4', // Serve as mp4 for better compatibility
-      'mov': 'video/mp4', // Serve as mp4 for better compatibility
-      'wmv': 'video/mp4', // Serve as mp4 for better compatibility
-      'mkv': 'video/mp4', // Serve as mp4 for better compatibility
-      '3gp': 'video/3gpp',
-      'flv': 'video/mp4', // Serve as mp4 for better compatibility
-      'm4v': 'video/mp4',
-      'mpg': 'video/mpeg',
+      // Video formats
+      'mp4': 'video/mp4', 'webm': 'video/webm', 'ogg': 'video/ogg', 'ogv': 'video/ogg',
+      'avi': 'video/mp4', 'mov': 'video/mp4', 'wmv': 'video/mp4', 'mkv': 'video/mp4',
+      '3gp': 'video/3gpp', 'flv': 'video/mp4', 'm4v': 'video/mp4', 'mpg': 'video/mpeg',
       'mpeg': 'video/mpeg',
       // Image formats
-      'jpg': 'image/jpeg',
-      'jpeg': 'image/jpeg',
-      'png': 'image/png',
-      'gif': 'image/gif',
-      'bmp': 'image/bmp',
-      'webp': 'image/webp',
-      'svg': 'image/svg+xml',
-      'tiff': 'image/tiff',
+      'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'gif': 'image/gif',
+      'bmp': 'image/bmp', 'webp': 'image/webp', 'svg': 'image/svg+xml', 'tiff': 'image/tiff',
       'ico': 'image/x-icon'
     };
     return mimeTypes[ext] || 'application/octet-stream';
   };
 
-  // Extract unique dates and times from media list
+  // ✅ FIX: Extract and correctly sort unique dates and times from the media list.
   const extractDatesTimes = (mediaData) => {
     const dates = new Set();
     const times = new Set();
     
     mediaData.forEach(media => {
       const date = new Date(media.timestamp);
-      const dateStr = date.toLocaleDateString();
-      const timeStr = date.toLocaleTimeString();
-      dates.add(dateStr);
-      times.add(timeStr);
+      // Use toLocaleDateString for the date part
+      dates.add(date.toLocaleDateString('en-US'));
+      // Use toLocaleTimeString but without seconds for a cleaner dropdown
+      times.add(date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }));
     });
     
-    setAvailableDates(Array.from(dates).sort());
-    setAvailableTimes(Array.from(times).sort());
+    // Sort dates chronologically by converting them back to Date objects for comparison
+    const sortedDates = Array.from(dates).sort((a, b) => new Date(a) - new Date(b));
+
+    // Sort times chronologically by creating a comparable Date object
+    const sortedTimes = Array.from(times).sort((a, b) => {
+      const timeA = new Date(`01/01/1970 ${a}`);
+      const timeB = new Date(`01/01/1970 ${b}`);
+      return timeA - timeB;
+    });
+
+    setAvailableDates(sortedDates);
+    setAvailableTimes(sortedTimes);
   };
+
 
   // Filter media based on selected date and time
   const filterMedia = () => {
@@ -361,14 +389,14 @@ export default function MediaViewer() {
     
     if (selectedDate) {
       filtered = filtered.filter(media => {
-        const mediaDate = new Date(media.timestamp).toLocaleDateString();
+        const mediaDate = new Date(media.timestamp).toLocaleDateString('en-US');
         return mediaDate === selectedDate;
       });
     }
     
     if (selectedTime) {
       filtered = filtered.filter(media => {
-        const mediaTime = new Date(media.timestamp).toLocaleTimeString();
+        const mediaTime = new Date(media.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
         return mediaTime === selectedTime;
       });
     }
@@ -389,7 +417,7 @@ useEffect(() => {
       console.log("Setting base URL with IP:", value.machineCode);
       setBaseUrl(`http://${value.machineCode}:5000`);
 
-      // ✅ MODIFICATION: Change this line to use your new API proxy
+      // Use API proxy for the video
       setStaticVideo(`/api/video-proxy?ip=${value.machineCode}`);
       
       if (activeTab === 'image') {
@@ -425,12 +453,10 @@ useEffect(() => {
       
       const mediaName = data.name;
       
-      // Create URL with proper encoding and cache busting
       const mediaEndpoint = type === 'image' ? 'image' : 'video';
       const timestamp = Date.now();
       const directUrl = `/api/media?ip=${value.machineCode}&type=${mediaEndpoint}&name=${encodeURIComponent(mediaName)}&t=${timestamp}`;
       
-      // Get MIME type from filename
       const mimeType = getMimeType(mediaName);
       
       setLatestMedia({
@@ -482,12 +508,10 @@ useEffect(() => {
     setLoading(true);
     setError(null);
     try {
-      // Create URL with proper encoding and cache busting
       const endpoint = type === 'image' ? 'image' : 'video';
       const timestamp = Date.now();
       const directUrl = `/api/media?ip=${value.machineCode}&type=${endpoint}&name=${encodeURIComponent(name)}&t=${timestamp}`;
       
-      // Test if the URL is accessible (for debugging)
       try {
         const testResponse = await fetch(directUrl, { method: 'HEAD' });
         console.log('Media file test response:', {
@@ -520,7 +544,6 @@ useEffect(() => {
   // Handle tab change
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    // Reset state, but ensure 'latest' is default for 'image' tab
     setActiveOption('latest'); 
     setLatestMedia(null);
     setMediaList([]);
@@ -532,7 +555,6 @@ useEffect(() => {
 
   // Handle option change
   const handleOptionChange = (option) => {
-    // This function now only applies to the 'image' tab
     setActiveOption(option);
     setLatestMedia(null);
     setMediaList([]);
@@ -551,13 +573,11 @@ useEffect(() => {
   // Initial load
   useEffect(() => {
     if (value.machineCode.length > 0 && activeTab === 'image') {
-      // MODIFICATION: Only fetch on load if it's the image tab.
-      // The video tab is now static and doesn't need an initial fetch.
       fetchLatestMedia(activeTab);
     }
   }, [activeTab, value.machineCode]);
 
-  // Cleanup blob URLs (not needed for direct URLs but keeping for consistency)
+  // Cleanup blob URLs
   useEffect(() => {
     return () => {
       if (latestMedia?.url?.startsWith('blob:')) {
@@ -568,10 +588,6 @@ useEffect(() => {
       }
     };
   }, [latestMedia, selectedMedia]);
-
-  const formatTimestamp = (timestamp) => {
-    return new Date(timestamp).toLocaleString();
-  };
 
   const formatDate = (timestamp) => {
     return new Date(timestamp).toLocaleDateString('en-US', { 
@@ -598,12 +614,6 @@ useEffect(() => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               {/* Debug Toggle */}
-              {/* <button
-                onClick={() => setShowDebug(!showDebug)}
-                className="text-xs bg-gray-200 px-2 py-1 rounded hover:bg-gray-300"
-              >
-                {showDebug ? 'Hide Debug' : 'Show Debug'}
-              </button> */}
             </div>
             
             {/* Tab Navigation */}
@@ -636,7 +646,6 @@ useEffect(() => {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* MODIFICATION: The entire section for mode selection and filtering is now conditional on the 'image' tab being active */}
         {activeTab === 'image' && (
           <>
             {/* Mode Selection */}
@@ -855,7 +864,6 @@ useEffect(() => {
           </div>
         )}
 
-        {/* MODIFICATION: Conditional Rendering based on activeTab */}
         {activeTab === 'image' ? (
           <>
             {/* Latest Media Display (for Images) */}
@@ -865,7 +873,8 @@ useEffect(() => {
                   <h2 className="text-2xl font-bold text-slate-800 mb-2">
                     Latest Photo
                   </h2>
-                  <p className="text-slate-600">{latestMedia.name}</p>
+                  {/* ✅ FIX: Use the new formatter for the media name */}
+                  <p className="text-slate-600">{formatMediaName(latestMedia.name)}</p>
                 </div>
                 
                 <div className="flex justify-center">
@@ -942,8 +951,9 @@ useEffect(() => {
                             <FileImage size={32} className="text-slate-400 group-hover:text-blue-500" />
                           </div>
                           <div className="space-y-2">
+                            {/* ✅ FIX: Use the new formatter for the media name */}
                             <h3 className="font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
-                              {media.name}
+                              {formatMediaName(media.name)}
                             </h3>
                             <div className="flex items-center space-x-2 text-sm text-slate-600">
                               <Calendar size={14} />
@@ -961,8 +971,9 @@ useEffect(() => {
                             <FileImage size={24} className="text-slate-400 group-hover:text-blue-500" />
                           </div>
                           <div className="flex-1 min-w-0">
+                            {/* ✅ FIX: Use the new formatter for the media name */}
                             <h3 className="font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
-                              {media.name}
+                              {formatMediaName(media.name)}
                             </h3>
                             <div className="flex items-center space-x-4 text-sm text-slate-600 mt-1">
                               <div className="flex items-center space-x-1">
@@ -1004,7 +1015,6 @@ useEffect(() => {
                     className="w-full rounded-xl shadow-lg"
                     onError={(e) => {
                       console.error('Static video load error:', e);
-                      // You might want to set a general error state here if needed
                     }}
                   />
                 </div>
@@ -1019,7 +1029,8 @@ useEffect(() => {
             <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-slate-800">{selectedMedia.name}</h2>
+                  {/* ✅ FIX: Use the new formatter for the media name */}
+                  <h2 className="text-xl font-bold text-slate-800">{formatMediaName(selectedMedia.name)}</h2>
                   <div className="flex items-center space-x-2">
                     <a
                       href={selectedMedia.url}
