@@ -91,8 +91,8 @@ export default function RealtimeDataPage() {
         const fetching = await fetch(`/api/newversion/width/?ip=${value.machineCode}`)
         const data = await fetching.json();
         setTotalChannelWidth(data.width)
-        console.log("###############################################################3")
-        console.log(data)
+        //console.log("###############################################################3")
+        //console.log(data)
       } catch (error) {
 
       }

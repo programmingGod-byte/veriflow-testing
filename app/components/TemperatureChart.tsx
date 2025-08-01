@@ -54,14 +54,13 @@ const TemperatureChart = () => {
   // CSV Download function
   const downloadCSV = () => {
     if (filteredData.length === 0) {
-      // Using a more user-friendly notification than alert()
       console.warn('No data available to download');
       return;
     }
 
-    const csvHeader = 'Timestamp,Temperature (°C)\n';
+    const csvHeader = 'timestamp,mean_temperature\n';
     const csvRows = filteredData.map(item => {
-      const timestamp = item.timestamp.toISOString();
+      const timestamp = item.timestamp.toISOString().replace('T', ' ').slice(0, 19);
       return `${timestamp},${item.temperature}`;
     }).join('\n');
 
@@ -85,28 +84,44 @@ const TemperatureChart = () => {
   };
 
   // Fetch temperature data
+  // Fetch temperature data
   const fetchTemperatureData = async () => {
     try {
       setLoading(true);
-      // Using a mock fetch for demonstration as the API route is not available.
-      // In a real scenario, this would be:
       const response = await fetch(`/api/temperature?ip=${value.machineCode}`);
-      if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
+      if (!response.ok) { 
+        throw new Error(`HTTP error! status: ${response.status}`); 
+      }
       const textData = await response.text();
 
-      // Mock data generation for demonstration
-
-      // const textData = mockData;
-
       const lines = textData.trim().split('\n');
+      
+      // Skip the header row and parse the data
       const parsedData = lines.slice(1).map(line => {
-        const [timestamp, temperature] = line.split(',');
-        return {
-          timestamp: new Date(timestamp),
-          temperature: parseFloat(temperature)
-        };
-      }).sort((a, b) => a.timestamp - b.timestamp); // Ensure data is sorted by time
+        const [timestamp, meanTemperature] = line.split(',');
+        
+        // Return null for malformed lines
+        if (!timestamp || !meanTemperature) {
+          return null;
+        }
 
+        const parsedTemp = parseFloat(meanTemperature);
+        // FIXED: Replace space with 'T' to ensure correct date parsing
+        const parsedDate = new Date(timestamp.replace(' ', 'T'));
+        
+        // Check for invalid data after parsing
+        if (isNaN(parsedTemp) || isNaN(parsedDate.getTime())) {
+          return null;
+        }
+        
+        return {
+          timestamp: parsedDate,
+          temperature: parsedTemp
+        };
+      }).filter(Boolean) // This will elegantly filter out all null values
+        .sort((a, b) => a.timestamp - b.timestamp); // Sort by date
+
+      console.log('Correctly parsed data:', parsedData.slice(0, 5)); // Debug log
       setData(parsedData);
       setError(null);
     } catch (err) {
@@ -116,7 +131,6 @@ const TemperatureChart = () => {
       setLoading(false);
     }
   };
-
   // Filter data based on selected time range
   const filterData = () => {
     if (data.length === 0) return;
@@ -181,144 +195,105 @@ const TemperatureChart = () => {
   const currentTemp = filteredData.length > 0 ? filteredData[filteredData.length - 1].temperature : null;
   const tempStatus = currentTemp !== null ? getTemperatureStatus(currentTemp) : null;
 
-  // #region --- MODIFICATION FOR DISCONTINUOUS LINE ---
+  // FIXED: Simplified data processing without null insertions
+  const processChartData = () => {
+    if (!filteredData || filteredData.length === 0) return [];
+    
+    return filteredData.map(item => ({
+      x: item.timestamp,
+      y: item.temperature,
+    }));
+  };
 
-  // Process data to insert nulls for time gaps > 20 minutes.
-  // This creates breaks in the line chart.
-  
-
-  const chartPoints = filteredData.reduce((points, currentItem, index, arr) => {
-  const twentyMinutesInMillis = 20 * 60 * 1000;
-  
-  // If it's not the first point, check the time difference from the previous one
-  if (index > 0) {
-    const previousItem = arr[index - 1];
-    const timeDiff = currentItem.timestamp.getTime() - previousItem.timestamp.getTime();
-
-    // If the gap is larger than 20 minutes, insert a null to create a break
-    if (timeDiff > twentyMinutesInMillis) {
-      points.push({
-        x: null,
-        y: null,
-      });
-    }
-  }
-  
-  // Add the actual data point in the {x, y} object format required by Chart.js
-  points.push({
-    x: currentItem.timestamp,
-    y: currentItem.temperature,
-  });
-
-  return points;
-}, []);
-
-const chartData = {
-  datasets: [
-    {
-      label: 'Temperature (°C)',
-      data: chartPoints,
-      borderColor: 'rgb(59, 130, 246)',
-      backgroundColor: 'rgba(59, 130, 246, 0.1)',
-      borderWidth: 2,
-      fill: true,
-      tension: 0.1,
-      pointRadius: 2,
-      pointHoverRadius: 5,
-      spanGaps: false,
-    },
-  ],
-};
-
-// Updated chartOptions with better null handling
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'top',
-    },
-    title: {
-      display: true,
-      text: 'Temperature Over Time',
-      font: {
-        size: 18,
-        weight: 'bold',
+  const chartData = {
+    datasets: [
+      {
+        label: 'Temperature (°C)',
+        data: processChartData(),
+        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.1,
+        pointRadius: 2,
+        pointHoverRadius: 5,
       },
-      padding: {
-        top: 10,
-        bottom: 20
-      }
+    ],
+  };
+
+  // FIXED: Simplified chart options
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'Temperature Over Time',
+        font: {
+          size: 18,
+          weight: 'bold',
+        },
+        padding: {
+          top: 10,
+          bottom: 20
+        }
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: function(context) {
+            return `Temperature: ${context.parsed.y.toFixed(2)}°C`;
+          },
+          title: function(context) {
+            if (!context || context.length === 0) return '';
+            const date = new Date(context[0].parsed.x);
+            return date.toLocaleString();
+          },
+        },
+      },
     },
-    tooltip: {
-      mode: 'index',
+    scales: {
+      x: {
+        type: 'time',
+        time: {
+          unit: 'hour',
+          tooltipFormat: 'MMM dd, yyyy HH:mm',
+          displayFormats: {
+            hour: 'HH:mm',
+            day: 'MMM dd',
+          },
+        },
+        title: {
+          display: true,
+          text: 'Time',
+        },
+        grid: {
+          display: true,
+          color: 'rgba(0, 0, 0, 0.1)',
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: 'Temperature (°C)',
+        },
+        beginAtZero: false,
+        grid: {
+          display: true,
+          color: 'rgba(0, 0, 0, 0.1)',
+        }
+      },
+    },
+    interaction: {
+      mode: 'nearest',
+      axis: 'x',
       intersect: false,
-      filter: function(tooltipItem) {
-        // Filter out null data points from tooltips
-        return tooltipItem.parsed.y !== null && tooltipItem.parsed.x !== null;
-      },
-      callbacks: {
-        label: function(context) {
-          if (context.parsed.y === null || context.parsed.x === null) return null;
-          return `Temperature: ${context.parsed.y.toFixed(2)}°C`;
-        },
-        title: function(context) {
-          if (!context || context.length === 0) return null;
-          
-          // Find the first non-null context item
-          const validContext = context.find(ctx => 
-            ctx.parsed && ctx.parsed.x !== null && ctx.parsed.y !== null
-          );
-          
-          if (!validContext) return null;
-          
-          const date = new Date(validContext.parsed.x);
-          return date.toLocaleString();
-        },
-      },
     },
-  },
-  scales: {
-    x: {
-      type: 'time',
-      time: {
-        unit: 'hour',
-        tooltipFormat: 'MMM dd, yyyy HH:mm',
-        displayFormats: {
-          hour: 'HH:mm',
-          day: 'MMM dd',
-        },
-      },
-      title: {
-        display: true,
-        text: 'Time',
-      },
-      grid: {
-        display: false
-      }
-    },
-    y: {
-      title: {
-        display: true,
-        text: 'Temperature (°C)',
-      },
-      beginAtZero: false,
-    },
-  },
-  interaction: {
-    mode: 'nearest',
-    axis: 'x',
-    intersect: false,
-  },
-  // Add this to handle null data points better
-  elements: {
-    point: {
-      radius: function(context) {
-        return context.parsed.y === null ? 0 : 2;
-      }
-    }
-  }
-};
+  };
 
   if (loading) {
     return (

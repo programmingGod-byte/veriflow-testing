@@ -65,7 +65,7 @@ const Navbar = () => {
           const response = await fetch('/api/user/profile');
           if (response.ok) {
             const data = await response.json();
-            console.log(data)
+            //console.log(data)
             setUser(data.user);
             if (data.user.email == "verigeektech@gmail.com" || data.user.email == "omdaga6@gmail.com") {
               setIsUserAdmin(true);
@@ -100,10 +100,10 @@ const Navbar = () => {
             const data = await response.json();
             setMachines(data.machines || []);
             setAllMachines(data.machines || []);
-            console.log(data.machines)
-            console.log("Machines fetched:", data.machines);
+            //console.log(data.machines)
+            //console.log("Machines fetched:", data.machines);
             if (data.machines && data.machines.length > 0) {
-              console.log("SSSSSSSSSSSSSSSSSSSSSSSSS")
+              //console.log("SSSSSSSSSSSSSSSSSSSSSSSSS")
               setValue({
                 machineName: data.machines[0].machineName,
                 machineCode: data.machines[0].machineCode,
@@ -111,7 +111,7 @@ const Navbar = () => {
                 latitude: data.machines[0].latitude,
                 longitude: data.machines[0].longitude
               })
-              console.log(value)
+              //console.log(value)
 
             }
           }
@@ -127,7 +127,7 @@ const Navbar = () => {
   // Navigation links
 
   function handleMacineClick(machine: any) {
-    console.log(machine)
+    //console.log(machine)
     setValue({
       machineCode: machine.machineCode,
       machineName: machine.machineName,
@@ -193,13 +193,13 @@ const Navbar = () => {
   const handleAddMachine = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAddingMachine(true);
-    console.log(machineId, machinePassword, selectedMachineType)
+    //console.log(machineId, machinePassword, selectedMachineType)
     let machineName = machineId;
     let machineCode = machinePassword;
     let machineType = selectedMachineType;
 
     const decryptResult  = decrypt(machineCode);
-    console.log(decryptResult)
+    //console.log(decryptResult)
     if(!decryptResult.success) {
       alert("wrong machine code");
       setIsAddingMachine(false)
@@ -228,16 +228,16 @@ const Navbar = () => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log("DATA")
-        console.log(data)
+        //console.log("DATA")
+        //console.log(data)
         // Refresh machines list
         const machinesResponse = await fetch('/api/machines');
         if (machinesResponse.ok) {
           const machinesData = await machinesResponse.json();
           setMachines(machinesData.machines || []);
           setAllMachines(machinesData.machines || []);
-          console.log("machines")
-          console.log(machinesData.machines)
+          //console.log("machines")
+          //console.log(machinesData.machines)
         }
 
         // Reset form and close modal
@@ -247,7 +247,7 @@ const Navbar = () => {
         alert('Machine added successfully!');
       } else {
         const errorData = await response.json();
-        console.log(errorData)
+        //console.log(errorData)
         alert(errorData.message || 'Failed to add machine');
       }
     } catch (error) {
@@ -260,8 +260,8 @@ const Navbar = () => {
 
   // Handle delete machine
   const handleDeleteMachine = async (machineCode: string) => {
-    console.log(machineCode)
-    console.log("INSIDE DELETE FUNCTION")
+    //console.log(machineCode)
+    //console.log("INSIDE DELETE FUNCTION")
     if (!confirm('Are you sure you want to delete this machine?')) {
       return;
     }
@@ -311,13 +311,13 @@ const Navbar = () => {
         } 
       
     setIsEditingMachine(true);
-    console.log(editingMachine.machineCode)
-    console.log({
-          machineName: editMachineName,
-          machineCode: decryption.value,
-          email: session?.user?.email,
-          machineType:editMachineType
-        })
+    //console.log(editingMachine.machineCode)
+    // console.log({
+    //       machineName: editMachineName,
+    //       machineCode: decryption.value,
+    //       email: session?.user?.email,
+    //       machineType:editMachineType
+    //     })
     try {
       const response = await fetch(`/api/machines/${editingMachine.machineCode}`, {
         method: 'PUT',
