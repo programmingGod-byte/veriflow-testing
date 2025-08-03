@@ -16,19 +16,57 @@ import { CloudRain, BarChart3 } from 'lucide-react';
 // Register Chart.js components needed for the bar chart
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const RainfallBarChart = ({ rainfallData }) => {
-    // Check if there is any data to display.
-    const hasData = rainfallData && rainfallData.length > 0;
+/**
+ * Aggregates rainfall data by day. If there are too many days,
+ * it will still show individual readings for smaller datasets.
+ * @param {Array<object>} data - The raw rainfall data.
+ * @param {number} [threshold=7] - The number of days after which to start aggregating.
+ * @returns {{labels: Array<string>, dataPoints: Array<number>}}
+ */
+const processRainfallData = (data, threshold = 7) => {
+    if (!data || data.length === 0) {
+        return { labels: [], dataPoints: [] };
+    }
 
-    // Format the data for the chart. The labels will be the timestamps.
-    const labels = hasData ? rainfallData.map(item => {
-        const d = item.parsedDate;
-        // Format as 'MM/DD HH:mm' for a concise label
-        return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    }) : [];
+    const firstDate = data[0].parsedDate;
+    const lastDate = data[data.length - 1].parsedDate;
+    const dayDifference = (lastDate - firstDate) / (1000 * 60 * 60 * 24);
+
+    // If the time range is less than the threshold, show individual measurements
+    if (dayDifference < threshold) {
+        const labels = data.map(item => {
+            const d = item.parsedDate;
+            return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        });
+        const dataPoints = data.map(item => item.rainfall);
+        return { labels, dataPoints };
+    }
     
-    // The data points will be the rainfall values.
-    const dataPoints = hasData ? rainfallData.map(item => item.rainfall) : [];
+    // Otherwise, aggregate the data by day
+    const dailyTotals = new Map();
+
+    data.forEach(item => {
+        const dayKey = item.parsedDate.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+        const currentTotal = dailyTotals.get(dayKey) || 0;
+        dailyTotals.set(dayKey, currentTotal + item.rainfall);
+    });
+
+    const sortedDays = Array.from(dailyTotals.keys()).sort();
+    
+    const labels = sortedDays.map(day => {
+        const [year, month, date] = day.split('-');
+        return `${month}/${date}/${year}`;
+    });
+    const dataPoints = sortedDays.map(day => dailyTotals.get(day));
+
+    return { labels, dataPoints };
+};
+
+
+const RainfallBarChart = ({ rainfallData }) => {
+    // Process the data: aggregate if necessary
+    const { labels, dataPoints } = processRainfallData(rainfallData);
+    const hasData = dataPoints.length > 0;
 
     // Chart.js data object for the bar chart.
     const chartData = {
@@ -37,25 +75,20 @@ const RainfallBarChart = ({ rainfallData }) => {
             {
                 label: 'Rainfall (mm)',
                 data: dataPoints,
-                // UPDATE: Changed colors to green
                 backgroundColor: 'rgba(40, 167, 69, 0.7)',
                 borderColor: 'rgba(40, 167, 69, 1)',
                 borderWidth: 1,
                 borderRadius: 4,
-                barPercentage: 0.8,
-                categoryPercentage: 0.7,
             },
         ],
     };
 
-    // Chart.js options object for styling and configuring the bar chart.
+    // Chart.js options object
     const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: {
-                display: false, // Legend is not needed for a single dataset.
-            },
+            legend: { display: false },
             title: {
                 display: true,
                 text: 'Rainfall Measurements',
@@ -71,12 +104,7 @@ const RainfallBarChart = ({ rainfallData }) => {
                 borderWidth: 1,
                 cornerRadius: 8,
                 callbacks: {
-                    title: (ctx) => {
-                         // Use the original data point to show the full date in the tooltip
-                         const originalDataPoint = rainfallData[ctx[0].dataIndex];
-                         return originalDataPoint.parsedDate.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
-                    },
-                    label: (ctx) => `Rainfall: ${ctx.parsed.y.toFixed(1)} mm`,
+                    label: (ctx) => `Total Rainfall: ${ctx.parsed.y.toFixed(1)} mm`,
                 },
             },
         },
@@ -84,28 +112,21 @@ const RainfallBarChart = ({ rainfallData }) => {
             x: {
                 title: {
                     display: true,
-                    text: 'Date & Time',
+                    text: 'Date',
                     color: '#374151',
                     font: { size: 14, weight: 'bold' },
                 },
-                ticks: { 
-                    color: '#6b7280',
-                    maxRotation: 90, // Rotate labels to prevent them from overlapping
-                    minRotation: 45,
-                },
-                grid: { display: false },
+                ticks: { color: '#6b7280' },
             },
             y: {
                 beginAtZero: true,
                 title: {
                     display: true,
-                    text: 'Rainfall (mm)',
+                    text: 'Total Rainfall (mm)',
                     color: '#374151',
                     font: { size: 14, weight: 'bold' },
                 },
-                ticks: {
-                    color: '#6b7280',
-                },
+                ticks: { color: '#6b7280' },
                 grid: { color: 'rgba(0,0,0,0.05)' },
             },
         },
@@ -119,7 +140,7 @@ const RainfallBarChart = ({ rainfallData }) => {
                 </div>
                 <div>
                     <h2 className="text-xl font-bold text-gray-900">Rainfall Bar Chart</h2>
-                    <p className="text-sm text-gray-600">Individual rainfall measurements for the selected period.</p>
+                    <p className="text-sm text-gray-600">Individual or daily total rainfall for the selected period.</p>
                 </div>
             </div>
             <div className="relative h-96 w-full bg-gray-50/50 p-4 rounded-lg border border-gray-200">
