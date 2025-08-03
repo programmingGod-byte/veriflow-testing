@@ -33,6 +33,7 @@ export async function GET(request:any) {
       addedAt: machine.addedAt || machine._id.getTimestamp(), // Use creation time if addedAt not available
       longitude:machine.longitude,
       latitude:machine.latitude,
+      depth:machine.depth
       // Add any other fields you want to return, but NOT the password
       // lastSeen: machine.lastSeen,
       // location: machine.location,

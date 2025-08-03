@@ -18,7 +18,7 @@ export async function PUT(request: Request, context: { params: { id: string } })
     await connectToDatabase();
 
     const body = await request.json();
-    const { machineName, machineCode, email,machineType,latitude,longitude } = body;
+    const { machineName, machineCode, email,machineType,latitude,longitude,depth } = body;
 
     const machineId = context.params.id;  // safer than destructuring if you want to debug
 
@@ -39,6 +39,7 @@ export async function PUT(request: Request, context: { params: { id: string } })
     if(machineType) machine.machineType = machineType; 
     if(latitude) machine.latitude = latitude;
     if(longitude) machine.longitude = longitude;
+    if(depth) machine.depth = depth;
     await user.save();
 
     return NextResponse.json({ message: 'Machine updated successfully', newId: machineName });

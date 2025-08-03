@@ -13,6 +13,7 @@ interface Machine {
   longitude?: string;
   latitude?: string;
   addedAt?: string;
+  depth?: string;
 }
 
 const MachineDetailsWidget =  ({
@@ -70,6 +71,7 @@ const MachineDetailsWidget =  ({
       machineName: machine.machineName,
       machineCode: machine.machineCode,
       machineType: machine.machineType,
+      depth: machine.depth,
     });
     setShouldNavigate(true);
   }
