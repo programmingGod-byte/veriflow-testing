@@ -198,6 +198,8 @@ const Navbar = () => {
     let machineCode = machinePassword;
     let machineType = selectedMachineType;
 
+    console.log(encrypt(machineCode))
+    console.log(decrypt(encrypt(machineCode)))
     const decryptResult  = decrypt(machineCode);
     //console.log(decryptResult)
     if(!decryptResult.success) {

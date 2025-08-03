@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState, useContext } from 'react';
+import { useRef, useEffect, useState, useContext, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   LineChart,
@@ -15,18 +15,63 @@ import {
 import * as Chart from 'chart.js';
 import { MyContext } from '../providers';
 
+/**
+ * A simple 1D Kalman filter.
+ * @param {number} R - Measurement noise covariance. How much we trust the measurement.
+ * @param {number} Q - Process noise covariance. How much we trust the prediction.
+ */
+class KalmanFilter {
+  private R: number; // Measurement Noise
+  private Q: number; // Process Noise
+  private A: number; // State Transition
+  private C: number; // Measurement
+  private x: number | null; // State
+  private P: number | null; // Covariance
+
+  constructor({ R = 0.1, Q = 0.01 }) {
+    this.R = R;
+    this.Q = Q;
+    this.A = 1;
+    this.C = 1;
+    this.x = null; // Filtered value
+    this.P = null; // Estimation error covariance
+  }
+
+  update(z: number): number {
+    if (this.x === null) {
+      this.x = z;
+      this.P = 1;
+      return this.x;
+    }
+
+    // Prediction
+    const x_pred = this.A * this.x;
+    const P_pred = this.A * this.P! * this.A + this.Q;
+
+    // Update
+    const K = P_pred * this.C * (1 / (this.C * P_pred * this.C + this.R)); // Kalman Gain
+    this.x = x_pred + K * (z - this.C * x_pred);
+    this.P = (1 - K * this.C) * P_pred;
+
+    return this.x;
+  }
+}
+
 interface VelocityData {
   section: number;
   velocity: number;
   timestamp: string;
 }
-
 interface TimeSeriesData {
   timestamp: string;
   date: string;
   time: string;
-  meanVelocity: number;
-  maxVelocity: number;
+  meanVelocity: number | null; // Changed from 'number'
+  maxVelocity: number | null;  // Changed from 'number'
+}
+
+interface ProcessedTimeSeriesData extends TimeSeriesData {
+  kalmanVelocity?: number | null;
 }
 
 interface VelocityChartProps {
@@ -66,6 +111,54 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
   const [timeRangeStart, setTimeRangeStart] = useState<string>('');
   const [timeRangeEnd, setTimeRangeEnd] = useState<string>('');
 
+  const [processedChartData, setProcessedChartData] = useState<ProcessedTimeSeriesData[]>([]);
+  // Kalman state is now fixed, but kept for calculation logic
+  const [kalmanQ, setKalmanQ] = useState(0.001);
+  const [kalmanR, setKalmanR] = useState(0.1);
+
+
+  // CUT THIS CODE (from line 515)
+const timeSeriesWithGaps = useMemo(() => {
+  if (filteredTimeSeriesData.length === 0) return [];
+
+  const result: TimeSeriesData[] = [filteredTimeSeriesData[0]];
+  for (let i = 1; i < filteredTimeSeriesData.length; i++) {
+    const prevPoint = filteredTimeSeriesData[i - 1];
+    const currentPoint = filteredTimeSeriesData[i];
+    const prevDate = new Date(prevPoint.timestamp);
+    const currentDate = new Date(currentPoint.timestamp);
+    const diffMinutes = (currentDate.getTime() - prevDate.getTime()) / (1000 * 60);
+
+    if (diffMinutes > 60) {
+      result.push({ ...currentPoint, meanVelocity: null, maxVelocity: null });
+    }
+    result.push(currentPoint);
+  }
+  return result;
+}, [filteredTimeSeriesData]);
+
+useEffect(() => {
+  if (timeSeriesWithGaps.length === 0) {
+    setProcessedChartData([]);
+    return;
+  }
+
+  let kf = new KalmanFilter({ R: kalmanR, Q: kalmanQ });
+
+  const filteredResult = timeSeriesWithGaps.map(point => {
+    if (point.meanVelocity === null) {
+      kf = new KalmanFilter({ R: kalmanR, Q: kalmanQ });
+      return { ...point, kalmanVelocity: null };
+    }
+    const kalmanVelocity = kf.update(point.meanVelocity);
+    return { ...point, kalmanVelocity };
+  });
+
+  setProcessedChartData(filteredResult);
+
+}, [timeSeriesWithGaps, kalmanQ, kalmanR]);
+
+
   const timePeriodOptions = [
     { value: '1day', label: '1 Day' },
     { value: '2day', label: '2 Days' },
@@ -86,14 +179,14 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
   };
 
   const downloadCSV = () => {
-    if (filteredTimeSeriesData.length === 0) {
+    if (processedChartData.length === 0) {
       alert('No data available to download');
       return;
     }
 
-    const csvHeaders = 'timestamp,velocity\n';
-    const csvContent = filteredTimeSeriesData
-      .map(item => `${item.timestamp},${item.meanVelocity}`)
+    const csvHeaders = 'timestamp,mean_velocity,kalman_filtered_velocity\n';
+    const csvContent = processedChartData
+      .map(item => `${item.timestamp},${item.meanVelocity ?? ''},${item.kalmanVelocity?.toFixed(4) ?? ''}`)
       .join('\n');
     const fullCSV = csvHeaders + csvContent;
 
@@ -101,7 +194,7 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `velocity_data_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `velocity_data_filtered_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -228,33 +321,35 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
         }
       });
 
-      const latestTimestamp = parsedData.reduce((latest, current) => new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest).timestamp;
-      const latestData = parsedData.filter(d => d.timestamp === latestTimestamp);
-      let maxVelocity = 0;
-      let meanVelocity = 0;
-      latestData.forEach(item => {
-        maxVelocity = Math.max(maxVelocity, item.velocity);
-        meanVelocity += item.velocity;
-      });
-      meanVelocity /= latestData.length;
-      setMaxVelocity(maxVelocity);
-      setMeanVelocity(meanVelocity);
-
       const uniqueTimestamps = [...new Set(parsedData.map(d => d.timestamp))].sort();
-      if (uniqueTimestamps.length > 1) {
-        const previousTimestamp = uniqueTimestamps[uniqueTimestamps.length - 2];
-        const prevData = parsedData.filter(d => d.timestamp === previousTimestamp);
-        let prevMaxVelocity = 0;
-        let prevMeanVelocity = 0;
-        prevData.forEach(item => {
-          prevMaxVelocity = Math.max(prevMaxVelocity, item.velocity);
-          prevMeanVelocity += item.velocity;
+      if (uniqueTimestamps.length > 0) {
+        const latestTimestamp = uniqueTimestamps[uniqueTimestamps.length - 1];
+        const latestData = parsedData.filter(d => d.timestamp === latestTimestamp);
+        let maxVelocity = 0;
+        let meanVelocity = 0;
+        latestData.forEach(item => {
+          maxVelocity = Math.max(maxVelocity, item.velocity);
+          meanVelocity += item.velocity;
         });
-        prevMeanVelocity /= prevData.length;
-        const maxVelocityIncrease = prevMaxVelocity !== 0 ? ((maxVelocity - prevMaxVelocity) / prevMaxVelocity * 100) : 0;
-        const meanVelocityIncrease = prevMeanVelocity !== 0 ? ((meanVelocity - prevMeanVelocity) / prevMeanVelocity * 100) : 0;
-        setMaxVelocityIncrease(maxVelocityIncrease.toFixed(2));
-        setMeanVelocityIncrease(meanVelocityIncrease.toFixed(2));
+        meanVelocity /= latestData.length;
+        setMaxVelocity(maxVelocity);
+        setMeanVelocity(meanVelocity);
+      
+        if (uniqueTimestamps.length > 1) {
+          const previousTimestamp = uniqueTimestamps[uniqueTimestamps.length - 2];
+          const prevData = parsedData.filter(d => d.timestamp === previousTimestamp);
+          let prevMaxVelocity = 0;
+          let prevMeanVelocity = 0;
+          prevData.forEach(item => {
+            prevMaxVelocity = Math.max(prevMaxVelocity, item.velocity);
+            prevMeanVelocity += item.velocity;
+          });
+          prevMeanVelocity /= prevData.length;
+          const maxVelocityIncrease = prevMaxVelocity !== 0 ? ((maxVelocity - prevMaxVelocity) / prevMaxVelocity * 100) : 0;
+          const meanVelocityIncrease = prevMeanVelocity !== 0 ? ((meanVelocity - prevMeanVelocity) / prevMeanVelocity * 100) : 0;
+          setMaxVelocityIncrease(maxVelocityIncrease.toFixed(2));
+          setMeanVelocityIncrease(meanVelocityIncrease.toFixed(2));
+        }
       }
 
       setData(parsedData);
@@ -406,7 +501,7 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
           <p className="text-sm font-semibold text-slate-700 mb-2">{`Time: ${label}`}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {`${entry.dataKey === 'meanVelocity' ? '' : 'Max'} Velocity: ${entry.value.toFixed(4)} m/s`}
+              {`${entry.name}: ${entry.value.toFixed(4)} m/s`}
             </p>
           ))}
         </div>
@@ -458,24 +553,6 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
         </div>
       </div>
     );
-  }
-
-  // MODIFICATION: Process time series data to insert breaks for gaps > 30 minutes
-  const timeSeriesWithGaps = [];
-  if (filteredTimeSeriesData.length > 0) {
-    timeSeriesWithGaps.push(filteredTimeSeriesData[0]);
-    for (let i = 1; i < filteredTimeSeriesData.length; i++) {
-      const prevPoint = filteredTimeSeriesData[i - 1];
-      const currentPoint = filteredTimeSeriesData[i];
-      const prevDate = new Date(prevPoint.timestamp);
-      const currentDate = new Date(currentPoint.timestamp);
-      const diffMinutes = (currentDate.getTime() - prevDate.getTime()) / (1000 * 60);
-
-      if (diffMinutes > 60) {
-        timeSeriesWithGaps.push({ ...currentPoint, meanVelocity: null });
-      }
-      timeSeriesWithGaps.push(currentPoint);
-    }
   }
 
   return (
@@ -575,21 +652,21 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
               </select>
             </div>
             <div className="text-sm text-slate-600">
-              {filteredTimeSeriesData.length > 0 && (<span>Showing {filteredTimeSeriesData.length} data points{timeSelectionMode === 'range' && ' (filtered by range)'}</span>)}
+              {processedChartData.length > 0 && (<span>Showing {processedChartData.filter(p=>p.meanVelocity !== null).length} data points{timeSelectionMode === 'range' && ' (filtered by range)'}</span>)}
             </div>
           </div>
         </div>
         <div className="p-4">
           <div style={{ width: '100%', height: '400px' }}>
-            {filteredTimeSeriesData.length > 0 ? (
+            {processedChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                {/* MODIFICATION: Use `timeSeriesWithGaps` for the data prop */}
-                <LineChart data={timeSeriesWithGaps}>
+                <LineChart data={processedChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis
                     dataKey="timestamp" stroke="#64748b" fontSize={11} angle={-45} textAnchor="end" height={80}
                     tickFormatter={(value) => {
                       const dateObj = new Date(value);
+                      if (isNaN(dateObj.getTime())) return value; // Handle invalid date strings
                       const hours = dateObj.getHours();
                       const minutes = dateObj.getMinutes();
                       const roundedMinutes = Math.floor(minutes / 15) * 15;
@@ -605,9 +682,13 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
                   <Line
-                    type="monotone" dataKey="meanVelocity" stroke="#3b82f6" strokeWidth={2} name="Velocity"
-                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#ffffff' }}
-                    // MODIFICATION: Explicitly disable connecting nulls
+                    type="monotone"
+                    dataKey="kalmanVelocity"
+                    name="Velocity"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={{ fill: '#3b82f6', strokeWidth: 1, r: 3 }}
+                    activeDot={{ r: 6 }}
                     connectNulls={false}
                   />
                 </LineChart>
