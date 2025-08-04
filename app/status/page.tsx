@@ -122,6 +122,7 @@ export default function StatusAlertsPage() {
   const [filteredAlerts, setFilteredAlerts] = useState(mockAlerts);
   const [activeLocation, setActiveLocation] = useState(monitoringLocations[0]);
   const [filter, setFilter] = useState('all');
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [alertStats, setAlertStats] = useState({
@@ -133,6 +134,13 @@ export default function StatusAlertsPage() {
   });
   const [smsAlerts, setSmsAlerts] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(true);
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    const newDarkMode = !isDarkMode;
+    setIsDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
+  };
   const [alertHistory, setAlertHistory] = useState<Alert[]>([
     {
       id: '1',
@@ -159,6 +167,14 @@ export default function StatusAlertsPage() {
       timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     }
   ]);
+
+  // Load dark mode preference from localStorage
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode !== null) {
+      setIsDarkMode(JSON.parse(savedDarkMode));
+    }
+  }, []);
 
   // Auto-refresh the time every minute
   useEffect(() => {
@@ -245,7 +261,33 @@ export default function StatusAlertsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800 py-8 px-4 sm:px-6 lg:px-8">
+    <div className={`min-h-screen py-8 px-4 sm:px-6 lg:px-8 transition-all duration-500 ${
+      isDarkMode 
+        ? 'bg-gray-900 text-gray-200' 
+        : 'bg-gray-50 text-gray-800'
+    }`}>
+      {/* Dark Mode Toggle */}
+      <motion.button
+        onClick={toggleDarkMode}
+        className={`fixed top-4 right-4 z-50 p-3 rounded-full transition-all duration-300 ${
+          isDarkMode 
+            ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400' 
+            : 'bg-gray-800 text-yellow-400 hover:bg-gray-700'
+        } shadow-lg`}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+      >
+        {isDarkMode ? (
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+          </svg>
+        ) : (
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+          </svg>
+        )}
+      </motion.button>
+
       <motion.div
         className="max-w-7xl mx-auto space-y-8"
         initial={{ opacity: 0 }}
@@ -253,10 +295,14 @@ export default function StatusAlertsPage() {
         transition={{ duration: 0.5 }}
       >
         {/* Page header */}
-        <div className="border-b border-gray-200 pb-5">
+        <div className={`border-b pb-5 ${
+          isDarkMode ? 'border-gray-700' : 'border-gray-200'
+        }`}>
           <div className="flex flex-wrap items-center justify-between">
             <motion.h1 
-              className="text-3xl font-bold tracking-tight text-blue-900 sm:text-4xl"
+              className={`text-3xl font-bold tracking-tight sm:text-4xl ${
+                isDarkMode ? 'text-blue-300' : 'text-blue-900'
+              }`}
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
@@ -270,15 +316,19 @@ export default function StatusAlertsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <span className="text-gray-600 text-sm mr-4">
+              <span className={`text-sm mr-4 ${
+                isDarkMode ? 'text-gray-400' : 'text-gray-600'
+              }`}>
                 Last updated: {currentTime.toLocaleTimeString()}
               </span>
               <button
                 onClick={refreshData}
                 disabled={isRefreshing}
-                className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  isRefreshing ? 'opacity-70 cursor-not-allowed' : ''
-                }`}
+                className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  isDarkMode 
+                    ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' 
+                    : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+                } ${isRefreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
                 {isRefreshing ? (
                   <>

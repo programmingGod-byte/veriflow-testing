@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
@@ -14,6 +14,7 @@ const fadeIn = {
 };
 
 export default function Contact() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [formState, setFormState] = useState({
     name: '',
     email: '',
@@ -22,6 +23,21 @@ export default function Contact() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  // Load dark mode preference from localStorage
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode !== null) {
+      setIsDarkMode(JSON.parse(savedDarkMode));
+    }
+  }, []);
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    const newDarkMode = !isDarkMode;
+    setIsDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormState({
@@ -66,8 +82,38 @@ export default function Contact() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
-      <div className="w-full h-24 bg-gradient-to-r from-blue-600 to-cyan-500"></div>
+    <div className={`min-h-screen transition-all duration-500 ${
+      isDarkMode 
+        ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800' 
+        : 'bg-gradient-to-br from-blue-50 to-cyan-50'
+    }`}>
+      {/* Dark Mode Toggle */}
+      <motion.button
+        onClick={toggleDarkMode}
+        className={`fixed top-4 right-4 z-50 p-3 rounded-full transition-all duration-300 ${
+          isDarkMode 
+            ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400' 
+            : 'bg-gray-800 text-yellow-400 hover:bg-gray-700'
+        } shadow-lg`}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+      >
+        {isDarkMode ? (
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+          </svg>
+        ) : (
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+          </svg>
+        )}
+      </motion.button>
+
+      <div className={`w-full h-24 ${
+        isDarkMode 
+          ? 'bg-gradient-to-r from-blue-800 to-cyan-700' 
+          : 'bg-gradient-to-r from-blue-600 to-cyan-500'
+      }`}></div>
       
       <div className="container mx-auto px-4 py-16">
         <motion.div 
@@ -76,10 +122,16 @@ export default function Contact() {
           animate="visible"
           variants={fadeIn}
         >
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent mb-4">
+          <h1 className={`text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r ${
+            isDarkMode 
+              ? 'from-blue-300 to-cyan-300' 
+              : 'from-blue-600 to-cyan-500'
+          } bg-clip-text text-transparent`}>
             Contact Us
           </h1>
-          <p className="text-lg text-gray-700 max-w-2xl mx-auto">
+          <p className={`text-lg max-w-2xl mx-auto ${
+            isDarkMode ? 'text-gray-300' : 'text-gray-700'
+          }`}>
             Have questions about Visiflow? Need assistance with your device? 
             Our team is here to help you protect your community from flood disasters.
           </p>
@@ -93,19 +145,29 @@ export default function Contact() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <div className="bg-white rounded-xl shadow-md p-6 h-full">
-              <h2 className="text-2xl font-bold text-blue-600 mb-4">Get in Touch</h2>
+            <div className={`rounded-xl shadow-md p-6 h-full ${
+              isDarkMode ? 'bg-gray-800' : 'bg-white'
+            }`}>
+              <h2 className={`text-2xl font-bold mb-4 ${
+                isDarkMode ? 'text-blue-300' : 'text-blue-600'
+              }`}>Get in Touch</h2>
               
               <div className="space-y-6">
                 <div className="flex items-start">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-4 flex-shrink-0 text-blue-600">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 flex-shrink-0 ${
+                    isDarkMode ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-600'
+                  }`}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-800">Address</h3>
-                    <p className="text-gray-600 mt-1">
+                    <h3 className={`font-semibold ${
+                      isDarkMode ? 'text-gray-200' : 'text-gray-800'
+                    }`}>Address</h3>
+                    <p className={`mt-1 ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                    }`}>
                       Kamand<br />
                       Mandi<br />
                       Himachal Pradesh - 175075
@@ -114,29 +176,41 @@ export default function Contact() {
                 </div>
                 
                 <div className="flex items-start">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-4 flex-shrink-0 text-blue-600">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 flex-shrink-0 ${
+                    isDarkMode ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-600'
+                  }`}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-800">Phone</h3>
-                    <p className="text-gray-600 mt-1">+91 7488011618</p>
-                    <p className="text-gray-600">Mon-Fri, 9am-5pm PST</p>
+                    <h3 className={`font-semibold ${
+                      isDarkMode ? 'text-gray-200' : 'text-gray-800'
+                    }`}>Phone</h3>
+                    <p className={`mt-1 ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                    }`}>+91 7488011618</p>
+                    <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Mon-Fri, 9am-5pm PST</p>
                   </div>
                 </div>
                 
                 <div className="flex items-start">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-4 flex-shrink-0 text-blue-600">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 flex-shrink-0 ${
+                    isDarkMode ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-600'
+                  }`}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                       <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-800">Email</h3>
-                    <p className="text-gray-600 mt-1">admin@visiflow.com</p>
-                    <p className="text-gray-600">We respond within 24 hours</p>
+                    <h3 className={`font-semibold ${
+                      isDarkMode ? 'text-gray-200' : 'text-gray-800'
+                    }`}>Email</h3>
+                    <p className={`mt-1 ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                    }`}>admin@visiflow.com</p>
+                    <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>We respond within 24 hours</p>
                   </div>
                 </div>
               </div>
