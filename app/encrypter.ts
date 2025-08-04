@@ -98,6 +98,9 @@ export function encrypt(text: string): string {
 }
 
 export function decrypt(encryptedText: string): DecryptResult {
+  console.log(encrypt("3.7.18.154"))
+  // 131401
+  // 990116
   try {
     console.log(encryptedText);
     const secret: string =  'default-secret';
