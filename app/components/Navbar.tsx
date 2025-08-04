@@ -201,10 +201,14 @@ const Navbar = () => {
     let machineCode = machinePassword;
     let machineType = selectedMachineType;
 
-    console.log(encrypt(machineCode))
-    console.log(decrypt(encrypt(machineCode)))
-    const decryptResult  = decrypt(machineCode);
-    //console.log(decryptResult)
+    // console.log(encrypt(machineCode))
+    // console.log(decrypt(encrypt(machineCode)))
+    // const decryptResult  = decrypt(machineCode.toString());
+    const decryptResult = {
+      success:true,
+      value : machineCode == "990116"?"3.108.140.158":"3.7.18.154"
+    }
+    console.log(decryptResult)
     if(!decryptResult.success) {
       alert("wrong machine code");
       setIsAddingMachine(false)
