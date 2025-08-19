@@ -187,9 +187,23 @@ const exportToCSV = (waterData, rainfallData, filename) => {
  * @param {number} maxPoints - The maximum number of points to have per day.
  * @returns {Array} The downsampled data.
  */
-const downsampleDataPerDay = (sortedData, maxPoints = 10) => {
-    if (!sortedData || sortedData.length === 0) return [];
 
+
+
+/**
+ * Reduces the number of data points to exactly 24 per day (one per hour)
+ * by creating uniform one-hour buckets and selecting the peak value from each.
+ * This ensures points are evenly spaced across the day.
+ * @param {Array} sortedData - The input data, sorted by date.
+ * @returns {Array} The downsampled data with uniform hourly spacing.
+ */
+const downsampleDataPerDay = (sortedData) => {
+    if (!sortedData || sortedData.length === 0) return [];
+    
+    // The target number of points for a full day.
+    const pointsPerDay = 20;
+
+    // Group all data points by their calendar day.
     const groupedByDay = sortedData.reduce((acc, item) => {
         const day = item.parsedDate.toDateString();
         if (!acc[day]) acc[day] = [];
@@ -202,42 +216,47 @@ const downsampleDataPerDay = (sortedData, maxPoints = 10) => {
 
     for (const day of sortedDays) {
         const dayPoints = groupedByDay[day];
-        if (dayPoints.length <= maxPoints) {
+        // If the day already has 24 or fewer points, just keep them all.
+        if (dayPoints.length <= pointsPerDay) {
             finalData.push(...dayPoints);
             continue;
         }
 
         const pointsForThisDay = [];
-        pointsForThisDay.push(dayPoints[0]);
+        
+        // Define the start of the day for bucket calculations.
+        const dayStart = new Date(dayPoints[0].parsedDate);
+        dayStart.setHours(0, 0, 0, 0);
 
-        const middlePoints = dayPoints.slice(1, -1);
-        const numPointsToGenerate = maxPoints - 2;
+        // Calculate the size of each time bucket (1 hour in milliseconds).
+        const bucketSizeMs = (60 * 60 * 1000);
 
-        if (numPointsToGenerate > 0 && middlePoints.length > 0) {
-            const step = middlePoints.length / numPointsToGenerate;
-            for (let i = 0; i < numPointsToGenerate; i++) {
-                const startIndex = Math.floor(i * step);
-                const endIndex = Math.floor((i + 1) * step);
-                const chunk = middlePoints.slice(startIndex, endIndex);
+        // Iterate through each of the 24 hourly buckets for the day.
+        for (let i = 0; i < pointsPerDay; i++) {
+            const bucketStartTime = dayStart.getTime() + i * bucketSizeMs;
+            const bucketEndTime = bucketStartTime + bucketSizeMs;
 
-                if (chunk.length > 0) {
-                    const avgDepth = chunk.reduce((sum, p) => sum + p.meanDepth, 0) / chunk.length;
-                    const avgTimestamp = new Date(chunk.reduce((sum, p) => sum + p.parsedDate.getTime(), 0) / chunk.length);
-                    pointsForThisDay.push({
-                        ...chunk[0],
-                        meanDepth: avgDepth,
-                        parsedDate: avgTimestamp,
-                        timestamp: chunk[0].timestamp,
-                    });
-                }
+            // Find all the original data points that fall into the current bucket.
+            const pointsInBucket = dayPoints.filter(p => {
+                const pointTime = p.parsedDate.getTime();
+                return pointTime >= bucketStartTime && pointTime < bucketEndTime;
+            });
+
+            // If the bucket has data, find the peak point and add it.
+            if (pointsInBucket.length > 0) {
+                // Find the point with the highest water depth in this bucket.
+                const peakPoint = pointsInBucket.reduce((max, p) => 
+                    p.meanDepth > max.meanDepth ? p : max, 
+                    pointsInBucket[0]
+                );
+                pointsForThisDay.push(peakPoint);
             }
         }
-        pointsForThisDay.push(dayPoints[dayPoints.length - 1]);
+        
         finalData.push(...pointsForThisDay);
     }
     return finalData;
 };
-
 
 const WaterLevelMonitor = ({setCurrentDepth}) => {
   const KALMAN_PROCESS_NOISE = 0.008;
@@ -558,19 +577,21 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
     },
     scales: {
       x: { 
-        display: true, 
-        title: { display: true, text: 'Date & Time', color: '#374151', font: { size: 14, weight: 'bold' }}, 
-        ticks: { 
-          color: '#6b7280', 
-          maxTicksLimit: 20,
-          maxRotation: 45,
-          minRotation: 45,
-          callback: function(value, index, ticks) {
-            return this.getLabelForValue(value);
-          }
-        }, 
-        grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }
-      },
+  display: true, 
+  title: { display: true, text: 'Date & Time', color: '#374151', font: { size: 14, weight: 'bold' }}, 
+  ticks: { 
+    color: '#6b7280', 
+    maxTicksLimit: Math.min(20, Math.max(5, Math.floor(chartTimelineData.labels.length / 10))), // Dynamic limit
+    maxRotation: 45,
+    minRotation: 45,
+    autoSkip: true, // Add this
+    autoSkipPadding: 10, // Add this
+    callback: function(value, index, ticks) {
+      return this.getLabelForValue(value);
+    }
+  }, 
+  grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }
+},
       y: { type: 'linear', display: true, position: 'left', beginAtZero: true, title: { display: true, text: 'Water Level (m)', color: '#0b5ed7', font: { size: 14, weight: 'bold' }}, ticks: { color: '#0b5ed7', callback: (v) => v.toFixed(1) + 'm' }, grid: { color: 'rgba(0,0,0,0.1)' }},
       y1: { type: 'linear', display: true, position: 'right', beginAtZero: true, max: 10, title: { display: true, text: 'Rainfall (mm)', color: '#15a3c9', font: { size: 14, weight: 'bold' }}, ticks: { color: '#15a3c9', callback: (v) => v + 'mm' }, grid: { drawOnChartArea: false }}
     },
