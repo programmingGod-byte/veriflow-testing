@@ -259,8 +259,9 @@ const downsampleDataPerDay = (sortedData) => {
 };
 
 const WaterLevelMonitor = ({setCurrentDepth}) => {
-  const KALMAN_PROCESS_NOISE = 0.008;
-  const KALMAN_MEASUREMENT_NOISE = 0.5;
+  // UPDATE: Adjusted Kalman filter parameters for less smoothing
+const KALMAN_PROCESS_NOISE = 0.2; // Increased from 0.008
+const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
   const GAP_DETECTION_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
   const MAX_POINTS_PER_DAY_LARGE_RANGE = 10; 
 
