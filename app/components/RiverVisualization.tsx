@@ -507,14 +507,14 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
 
     data.forEach(point => {
       const currentDay = point.parsedDate.toDateString();
-      if (lastDay !== null && currentDay !== lastDay) {
-        chartLabels.push('');
-        chartWaterData.push(null);
-        chartRainfallData.push(null);
-        chartAlertData.push(null);
-        chartAlarmData.push(null);
-        combinedData.push(null);
-      }
+      // if (lastDay !== null && currentDay !== lastDay) {
+      //   chartLabels.push('');
+      //   chartWaterData.push(null);
+      //   chartRainfallData.push(null);
+      //   chartAlertData.push(null);
+      //   chartAlarmData.push(null);
+      //   combinedData.push(null);
+      // }
 
       const labelDate = point.parsedDate;
       const formattedLabel = `${String(labelDate.getMonth() + 1).padStart(2, '0')}/${String(labelDate.getDate()).padStart(2, '0')}/${labelDate.getFullYear()} ${String(labelDate.getHours()).padStart(2, '0')}:${String(labelDate.getMinutes()).padStart(2, '0')}`;

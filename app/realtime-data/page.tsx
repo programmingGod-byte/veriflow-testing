@@ -19,12 +19,14 @@ import VelocityChart from '../components/VelocityChart';
 import DischargeContributionPieChart from '../components/DischargeContributionPieChart';
 import DischargeBarChart from '../components/DischargeBarChart';
 import DischargeGraph from '../components/DischargeGraph';
+
 import StatCard from '../components/StatCard';
 import WaterLevelIndicator from '../components/WaterLevelIndicator';
 import { MyContext } from '../providers';
 import MediaViewer from '../components/DisplayImageAndVideos';
 // import FlowAngleDashboard from '../components/FlowDirectionChart';
 import TemperatureChart from '../components/TemperatureChart';
+import BatteryChart from '../components/BatteryLevel';
 // Mock data based on the provided images
 const riverData = {
   flowDirection: 62.5,
@@ -334,6 +336,14 @@ export default function RealtimeDataPage() {
                 Higher velocities typically occur in the central channel.
               </div>
             </div>
+
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100 mt-6">
+              {/* <h2 className="text-xl font-sem  ibold mb-4 text-slate-700"> Battery Health </h2> */}
+              <BatteryChart/>
+             
+            </div>
+
+
 
             {/* Temperature Chart */}
             <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100 mt-6">
