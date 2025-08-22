@@ -357,15 +357,15 @@ export default function RealtimeDataPage() {
 
             <>
 
-             {
-                iseUserAdmin  && (
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100 mt-6">
-              {/* <h2 className="text-xl font-sem  ibold mb-4 text-slate-700"> Battery Health </h2> */}
-              <BatteryChart setBatteryLevel={setBatteryLevel}/>
-             
-            </div>
-                )
-              }
+             <div
+  className={`bg-white rounded-lg p-4 shadow-sm border border-slate-100 mt-6 ${
+    !iseUserAdmin ? "hidden" : ""
+  }`}
+>
+  {/* <h2 className="text-xl font-semibold mb-4 text-slate-700"> Battery Health </h2> */}
+  <BatteryChart setBatteryLevel={setBatteryLevel} />
+</div>
+
             
           </>
 

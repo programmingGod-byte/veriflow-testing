@@ -38,6 +38,14 @@ const BatteryChart = ({ setBatteryLevel }) => {
   const [currentBatteryPercentage, setCurrentBatteryPercentage] = useState(null); // For UI status
 
   // Fetch and parse data from the API
+  
+
+
+  // Fetch and parse data from the API
+  
+
+
+  // Fetch and parse data from the API
   useEffect(() => {
     if (!value.machineCode) {
       setIsLoading(false);
@@ -71,14 +79,14 @@ const BatteryChart = ({ setBatteryLevel }) => {
             if (!timestamp || isNaN(parseFloat(level))) {
               return null; // Skip malformed rows
             }
-            // Convert to a valid Date object, assuming UTC timestamps
+            // --- FIX IS HERE ---
+            // Append 'Z' to the timestamp string to ensure it's parsed as UTC.
+            // This makes all timezone-related calculations accurate.
             return {
-              time: new Date(timestamp.replace(' ', 'T') + 'Z'),
-              // --- MODIFICATION START ---
-              // Cap the voltage level at 13.4V
+              time: new Date(timestamp.replace(' ', 'T') + 'Z'), 
               level: Math.min(parseFloat(level), 13.4),
-              // --- MODIFICATION END ---
             };
+            // --- END OF FIX ---
           })
           .filter(Boolean) // Remove any null entries
           .sort((a, b) => a.time - b.time); // Ensure data is chronological
@@ -138,7 +146,7 @@ const BatteryChart = ({ setBatteryLevel }) => {
         
         setCurrentBatteryLevel(latestLevel.toFixed(3));
         setCurrentBatteryPercentage(percentage.toFixed(0));
-        setBatteryLevel(percentage.toFixed(3));
+        setBatteryLevel(percentage.toFixed(2));
     } else {
       setBatteryLevel(null);
       setCurrentBatteryLevel(null);
