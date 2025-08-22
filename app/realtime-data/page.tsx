@@ -74,6 +74,7 @@ export default function RealtimeDataPage() {
   const { value, setValue,iseUserAdmin } = useContext(MyContext)
   const [maxVelocity, setMaxVelocity] = useState(0);
   const [currentDepth, setCurrentDepth] = useState(0)
+  const [batteryLevel, setBatteryLevel] = useState(0)
   const [meanVelocity, setMeanVelocity] = useState(0);
   const [maxVelocityIncrease, setMaxVelocityIncrease] = useState(0);
   const [channelWidth, setTotalChannelWidth] = useState(0)
@@ -257,7 +258,7 @@ export default function RealtimeDataPage() {
         </div>
 
         {/* Key stats */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Depth"
             value={currentDepth}
@@ -289,6 +290,23 @@ export default function RealtimeDataPage() {
               delay={0.3}
             />
           )}
+
+{value?.machineType !== "tarang" && (
+            <StatCard
+              title="Battry Health"
+              value={batteryLevel}
+              unit="%"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11l3-3m0 0l3 3m-3-3v8m0-13a9 9 0 110 18 9 9 0 010-18z" />
+                </svg>
+              }
+              color="red"
+              // change={{ value: meanVelocityIncrease, trend: meanVelocityIncrease > 0 ? 'up' : 'down' }}
+              delay={0.3}
+            />
+          )}
+
 
           {/* Fixed StatCard for machines that are not tarang AND not pravaah */}
           {(value?.machineType !== "tarang" && value?.machineType !== "pravaah") && (
@@ -337,12 +355,19 @@ export default function RealtimeDataPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100 mt-6">
+            <>
+
+             {
+                iseUserAdmin  && (
+                  <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100 mt-6">
               {/* <h2 className="text-xl font-sem  ibold mb-4 text-slate-700"> Battery Health </h2> */}
-              <BatteryChart/>
+              <BatteryChart setBatteryLevel={setBatteryLevel}/>
              
             </div>
-
+                )
+              }
+            
+          </>
 
 
             {/* Temperature Chart */}

@@ -31,7 +31,7 @@ const MyContext = React.createContext({
     isUserAdmin: false,
 });
 
-const BatteryChart = () => {
+const BatteryChart = ({setBatteryLevel}) => {
   const [rawData, setRawData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -111,7 +111,9 @@ const BatteryChart = () => {
     if (filteredData.length > 0) {
         const latestLevel = filteredData[filteredData.length - 1].level;
         setCurrentBatteryLevel(latestLevel.toFixed(2));
+        setBatteryLevel(latestLevel.toFixed(2));
     } else {
+      setBatteryLevel(null);
         setCurrentBatteryLevel(null);
     }
   }, [filteredData]);
@@ -430,14 +432,6 @@ const BatteryChart = () => {
 };
 
 // Main App component
-function App() {
-    const [contextValue, setContextValue] = useState({ machineCode: 'DEVICE-001' });
 
-    return (
-        <MyContext.Provider value={{ value: contextValue, setValue: setContextValue, isUserAdmin: true }}>
-            <BatteryChart />
-        </MyContext.Provider>
-    );
-}
 
-export default App;
+export default BatteryChart;
