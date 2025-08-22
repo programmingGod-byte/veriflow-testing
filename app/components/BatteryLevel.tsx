@@ -11,6 +11,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
+import { MyContext } from '../providers';
 
 // Register Chart.js components
 ChartJS.register(
@@ -24,51 +25,63 @@ ChartJS.register(
   Filler
 );
 
-// Mock context
-const MyContext = React.createContext({
-    value: { machineCode: 'default-machine' },
-    setValue: () => {},
-    isUserAdmin: false,
-});
-
-const BatteryChart = ({setBatteryLevel}) => {
+const BatteryChart = ({ setBatteryLevel }) => {
   const [rawData, setRawData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const { value } = useContext(MyContext);
-  const [timeRange, setTimeRange] = useState('1h');
+  const [timeRange, setTimeRange] = useState('1d'); // Default to 1 day
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [showCustomRangePicker, setShowCustomRangePicker] = useState(false);
-  const [currentBatteryLevel, setCurrentBatteryLevel] = useState(null);
+  const [currentBatteryLevel, setCurrentBatteryLevel] = useState(null); // Will store voltage
+  const [currentBatteryPercentage, setCurrentBatteryPercentage] = useState(null); // For UI status
 
-  // Fetch and parse data
+  // Fetch and parse data from the API
   useEffect(() => {
+    if (!value.machineCode) {
+      setIsLoading(false);
+      setRawData([]);
+      return;
+    }
+
     const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
-        const generateMockCsv = () => {
-            let csv = '';
-            const now = new Date();
-            for (let i = 0; i < 72 * 60; i++) {
-                const timestamp = new Date(now.getTime() - i * 60 * 1000);
-                let level = 80 + Math.sin(i / 180) * 15 + (Math.random() - 0.5) * 5;
-                level = Math.max(10.8, level);
-                csv += `${timestamp.toISOString()},${level.toFixed(4)}\n`;
-            }
-            return csv;
-        };
+        // Fetch data from the API endpoint using machineCode
+        const response = await fetch(`/api/battery?ip=${value.machineCode}`);
         
-        const csvText = generateMockCsv();
+        if (!response.ok) {
+          throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+        }
+        
+        const csvText = await response.text();
+
+        if (!csvText || csvText.trim() === '') {
+            setRawData([]); // Handle empty response from API
+            return;
+        }
+
         const parsedData = csvText
           .trim()
           .split('\n')
           .map(row => {
             const [timestamp, level] = row.split(',');
+            if (!timestamp || isNaN(parseFloat(level))) {
+              return null; // Skip malformed rows
+            }
+            // Convert to a valid Date object, assuming UTC timestamps
             return {
-              time: new Date(timestamp),
-              level: parseFloat(level),
+              time: new Date(timestamp.replace(' ', 'T') + 'Z'),
+              // --- MODIFICATION START ---
+              // Cap the voltage level at 13.4V
+              level: Math.min(parseFloat(level), 13.4),
+              // --- MODIFICATION END ---
             };
-          }).reverse();
+          })
+          .filter(Boolean) // Remove any null entries
+          .sort((a, b) => a.time - b.time); // Ensure data is chronological
         
         setRawData(parsedData);
       } catch (e) {
@@ -106,17 +119,32 @@ const BatteryChart = ({setBatteryLevel}) => {
     });
   }, [rawData, timeRange, customStartDate, customEndDate]);
 
-  // Update current battery level
+  // --- Voltage to Percentage Conversion ---
+  const convertVoltageToPercentage = (voltage) => {
+    if (voltage === null) return null;
+    // Using a typical state of charge range for a 12V battery system
+    const MIN_VOLTAGE = 11.8; // Considered 0%
+    const MAX_VOLTAGE = 12.7; // Considered 100%
+    const percentage = ((voltage - MIN_VOLTAGE) / (MAX_VOLTAGE - MIN_VOLTAGE)) * 100;
+    // Clamp the result between 0 and 100
+    return Math.max(0, Math.min(100, percentage));
+  };
+
+  // Update current battery level and percentage
   useEffect(() => {
     if (filteredData.length > 0) {
         const latestLevel = filteredData[filteredData.length - 1].level;
-        setCurrentBatteryLevel(latestLevel.toFixed(2));
-        setBatteryLevel(latestLevel.toFixed(2));
+        const percentage = convertVoltageToPercentage(latestLevel);
+        
+        setCurrentBatteryLevel(latestLevel.toFixed(3));
+        setCurrentBatteryPercentage(percentage.toFixed(0));
+        setBatteryLevel(percentage.toFixed(3));
     } else {
       setBatteryLevel(null);
-        setCurrentBatteryLevel(null);
+      setCurrentBatteryLevel(null);
+      setCurrentBatteryPercentage(null);
     }
-  }, [filteredData]);
+  }, [filteredData, setBatteryLevel]);
 
   const handleTimeRangeChange = (e) => {
     const selectedRange = e.target.value;
@@ -152,29 +180,28 @@ const BatteryChart = ({setBatteryLevel}) => {
     return date.toLocaleString([], optionsDateAndTime);
   };
 
-  // Get battery status color
-  const getBatteryStatus = (level) => {
-    if (level >= 75) return { color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' };
-    if (level >= 50) return { color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' };
-    if (level >= 25) return { color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
+  // Get battery status color based on calculated percentage
+  const getBatteryStatus = (percentage) => {
+    if (percentage === null) return { color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' };
+    if (percentage >= 75) return { color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' };
+    if (percentage >= 50) return { color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' };
+    if (percentage >= 25) return { color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
     return { color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' };
   };
 
-  const status = currentBatteryLevel ? getBatteryStatus(parseFloat(currentBatteryLevel)) : null;
+  const status = getBatteryStatus(currentBatteryPercentage);
 
-  // Professional chart data
+  // Chart data configuration for voltage
   const chartData = {
     labels: filteredData.map(d => formatLabel(d.time)),
     datasets: [
       {
-        label: 'Battery Level (%)',
+        label: 'Battery Voltage (V)',
         data: filteredData.map(d => d.level),
         borderColor: '#20b462ff',
         backgroundColor: (context) => {
-          const chart = context.chart;
-          const {ctx, chartArea} = chart;
+          const { ctx, chartArea } = context.chart;
           if (!chartArea) return null;
-          
           const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
           gradient.addColorStop(0, 'rgba(59, 130, 246, 0.05)');
           gradient.addColorStop(1, 'rgba(59, 130, 246, 0.2)');
@@ -185,56 +212,26 @@ const BatteryChart = ({setBatteryLevel}) => {
         fill: true,
         pointRadius: 0,
         pointHoverRadius: 5,
-        pointHoverBackgroundColor: '#3b82f6',
-        pointHoverBorderColor: 'white',
-        pointHoverBorderWidth: 2,
       },
     ],
   };
 
-  // Professional chart options
+  // Chart options configuration for voltage
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    interaction: {
-      intersect: false,
-      mode: 'index',
-    },
+    interaction: { intersect: false, mode: 'index' },
     plugins: {
-      legend: {
-        display: false,
-      },
-      title: {
-        display: false,
-      },
+      legend: { display: false },
+      title: { display: false },
       tooltip: {
         backgroundColor: 'rgba(17, 24, 39, 0.95)',
-        titleColor: 'white',
-        bodyColor: 'white',
-        borderColor: 'rgba(156, 163, 175, 0.3)',
-        borderWidth: 1,
-        cornerRadius: 6,
-        displayColors: false,
-        titleFont: {
-          size: 13,
-          weight: '600'
-        },
-        bodyFont: {
-          size: 12
-        },
-        padding: 12,
+        titleColor: 'white', bodyColor: 'white',
         callbacks: {
-          label: function(context) {
-            const index = context.dataIndex;
-            const dataPoint = filteredData[index];
-            if (!dataPoint) return '';
-            return `Level: ${dataPoint.level.toFixed(2)}%`;
-          },
-          title: function(context) {
+          label: (context) => `Voltage: ${context.parsed.y.toFixed(3)} V`,
+          title: (context) => {
             const index = context[0].dataIndex;
-            const dataPoint = filteredData[index];
-            if (!dataPoint) return '';
-            return dataPoint.time.toLocaleString();
+            return filteredData[index]?.time.toLocaleString() || '';
           }
         }
       }
@@ -242,41 +239,23 @@ const BatteryChart = ({setBatteryLevel}) => {
     scales: {
         y: {
             min: 10.8,
-            grid: {
-              color: 'rgba(156, 163, 175, 0.2)',
-              drawBorder: false,
-            },
+            max: 14.0, // Set max for a consistent scale
+            grid: { color: 'rgba(156, 163, 175, 0.2)', drawBorder: false },
             ticks: {
               color: 'rgb(75, 85, 99)',
-              font: {
-                size: 12,
-                family: 'Inter, system-ui, sans-serif'
-              },
-              callback: function(value) {
-                return value + '%';
-              }
+              callback: (value) => `${value.toFixed(1)} V`, // Append 'V' to ticks
             },
             title: {
                 display: true,
-                text: 'Battery Level (%)',
+                text: 'Battery Voltage (V)',
                 color: 'rgb(55, 65, 81)',
-                font: {
-                  size: 13,
-                  weight: '600'
-                }
+                font: { size: 13, weight: '600' }
             }
         },
         x: {
-            grid: {
-              color: 'rgba(156, 163, 175, 0.2)',
-              drawBorder: false,
-            },
+            grid: { color: 'rgba(156, 163, 175, 0.2)', drawBorder: false },
             ticks: {
                 color: 'rgb(75, 85, 99)',
-                font: {
-                  size: 12,
-                  family: 'Inter, system-ui, sans-serif'
-                },
                 maxRotation: (timeRange === '1h' || timeRange === '2h') ? 0 : 45,
                 minRotation: (timeRange === '1h' || timeRange === '2h') ? 0 : 45,
                 autoSkip: true,
@@ -286,10 +265,7 @@ const BatteryChart = ({setBatteryLevel}) => {
                 display: true,
                 text: 'Time',
                 color: 'rgb(55, 65, 81)',
-                font: {
-                  size: 13,
-                  weight: '600'
-                }
+                font: { size: 13, weight: '600' }
             }
         }
     }
@@ -297,10 +273,10 @@ const BatteryChart = ({setBatteryLevel}) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-full flex items-center justify-center p-6">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg font-medium">Loading battery monitoring data...</p>
+          <p className="text-gray-600 text-lg font-medium">Loading battery data...</p>
         </div>
       </div>
     );
@@ -308,7 +284,7 @@ const BatteryChart = ({setBatteryLevel}) => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-full flex items-center justify-center p-6">
         <div className="text-center bg-red-50 border border-red-200 rounded-lg p-8 max-w-md">
           <div className="text-red-500 text-4xl mb-4">⚠</div>
           <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Data</h3>
@@ -319,33 +295,25 @@ const BatteryChart = ({setBatteryLevel}) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="h-full max-w-7xl mx-auto px-4 py-6">
-        {/* Professional Header */}
+    <div className="bg-gray-50 p-6 h-full">
+      <div className="max-w-7xl mx-auto">
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Battery Monitoring Dashboard</h1>
-              {/* <p className="text-gray-600">Real-time battery level monitoring for device: <span className="font-semibold text-gray-900">{value.machineCode}</span></p> */}
-            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Battery Monitoring Dashboard</h1>
             
-            {/* Current Battery Status */}
-            {status && (
+            {currentBatteryLevel !== null && (
               <div className={`${status.bg} ${status.border} border rounded-lg p-6 min-w-72`}>
                 <div className="text-center">
                   <p className="text-sm font-medium text-gray-600 mb-1">Current Battery Level</p>
                   <p className={`text-3xl font-bold ${status.color}`}>
-                    {currentBatteryLevel}%
+                    {currentBatteryLevel} V 
+                    <span className="text-lg ml-2 font-medium text-gray-500">({currentBatteryPercentage}%)</span>
                   </p>
                   <div className="mt-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
                       <div 
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          parseFloat(currentBatteryLevel) >= 75 ? 'bg-emerald-500' :
-                          parseFloat(currentBatteryLevel) >= 50 ? 'bg-amber-500' :
-                          parseFloat(currentBatteryLevel) >= 25 ? 'bg-orange-500' : 'bg-red-500'
-                        }`}
-                        style={{ width: `${currentBatteryLevel}%` }}
+                        className={`h-2.5 rounded-full transition-all duration-300 ${status.bg.replace('-50', '-500')}`}
+                        style={{ width: `${currentBatteryPercentage}%` }}
                       ></div>
                     </div>
                   </div>
@@ -355,83 +323,53 @@ const BatteryChart = ({setBatteryLevel}) => {
           </div>
         </div>
 
-        {/* Controls */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <label className="text-sm font-medium text-gray-700">Time Range:</label>
-            <select 
-              value={timeRange} 
-              onChange={handleTimeRangeChange}
-              className="border border-gray-300 bg-white text-gray-900 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            >
-              <option value="1h">Past 1 Hour</option>
-              <option value="2h">Past 2 Hours</option>
-              <option value="1d">Past 1 Day</option>
-              <option value="2d">Past 2 Days</option>
-              <option value="custom">Custom Range</option>
-            </select>
+        {/* Chart and Controls */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="text-sm font-medium text-gray-700">Time Range:</label>
+              <select 
+                value={timeRange} 
+                onChange={handleTimeRangeChange}
+                className="border border-gray-300 bg-white text-gray-900 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="1h">Past 1 Hour</option>
+                <option value="2h">Past 2 Hours</option>
+                <option value="1d">Past 1 Day</option>
+                <option value="2d">Past 2 Days</option>
+                <option value="custom">Custom Range</option>
+              </select>
 
-            {showCustomRangePicker && (
-              <div className="flex flex-wrap items-center gap-3 ml-4 p-4 bg-gray-50 rounded-md border border-gray-200">
-                <label className="text-sm font-medium text-gray-700">From:</label>
-                <input 
-                  type="datetime-local" 
-                  value={customStartDate} 
-                  onChange={e => setCustomStartDate(e.target.value)}
-                  className="border border-gray-300 bg-white text-gray-900 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <label className="text-sm font-medium text-gray-700">To:</label>
-                <input 
-                  type="datetime-local" 
-                  value={customEndDate} 
-                  onChange={e => setCustomEndDate(e.target.value)}
-                  className="border border-gray-300 bg-white text-gray-900 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Chart Container */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Battery Level Timeline</h2>
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              <span>📊 {filteredData.length > 0 ? `${filteredData.length} data points` : 'No data available'}</span>
-              {filteredData.length > 0 && (
-                <span>🕒 Last updated: {new Date(filteredData[filteredData.length - 1].time).toLocaleString()}</span>
+              {showCustomRangePicker && (
+                <div className="flex flex-wrap items-center gap-3 ml-4 p-4 bg-gray-50 rounded-md border border-gray-200">
+                  <label>From:</label>
+                  <input type="datetime-local" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="border-gray-300 rounded-md"/>
+                  <label>To:</label>
+                  <input type="datetime-local" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="border-gray-300 rounded-md"/>
+                </div>
               )}
             </div>
           </div>
           
-          <div className="relative" style={{ height: 'calc(100vh - 400px)', minHeight: '450px' }}>
-            {filteredData.length > 0 ? (
-              <Line options={chartOptions} data={chartData} />
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center p-8">
-                  <div className="text-6xl text-gray-300 mb-4">📈</div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Available</h3>
-                  <p className="text-gray-600 mb-4">No battery data found for the selected time range.</p>
-                  <p className="text-sm text-gray-500">Try selecting a different time range or check your data connection.</p>
+          <div className="p-6">
+            <div className="relative" style={{ height: '450px' }}>
+              {filteredData.length > 0 ? (
+                <Line options={chartOptions} data={chartData} />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center p-8">
+                    <div className="text-6xl text-gray-300 mb-4">📈</div>
+                    <h3 className="text-lg font-medium text-gray-900">No Data Available</h3>
+                    <p className="text-gray-600">No battery data found for the selected device or time range.</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-
-        {/* Footer Info */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-500">
-            Battery monitoring system • Last refresh: {new Date().toLocaleString()}
-          </p>
         </div>
       </div>
     </div>
   );
 };
-
-// Main App component
-
 
 export default BatteryChart;

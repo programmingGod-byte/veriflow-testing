@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const fetchResponse = await fetch(`http://${ip}:5000/velocity.csv`);
+    const fetchResponse = await fetch(`http://${ip}:5000/battery.csv`);
     
     if (!fetchResponse.ok) {
       return new Response(JSON.stringify({ error: `Failed to fetch CSV from ${ip}` }), {

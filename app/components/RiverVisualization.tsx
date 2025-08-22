@@ -325,6 +325,7 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
   };
   
   const processAndSetData = (apiData, startDate, endDate, daysInRange) => {
+    console.log(context.value.depth)
     const transformedData = apiData.map(item => ({
         timestamp: item.timestamp,
         meanDepth: parseFloat(context.value.depth)  -item.mean_depth,
@@ -567,10 +568,7 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
               if (depth >= ALARM_LEVEL) status = 'ALARM'; else if (depth >= ALERT_LEVEL) status = 'ALERT';
               return `Water Level: ${depth.toFixed(3)}m (${status})`;
             }
-            if (ctx.dataset.label === 'Rainfall') {
-              const rain = ctx.parsed.y;
-              return rain === null ? null : `Rainfall: ${rain.toFixed(1)}mm`;
-            }
+            
             return '';
           }
         }
@@ -594,7 +592,7 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
   grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }
 },
       y: { type: 'linear', display: true, position: 'left', beginAtZero: true, title: { display: true, text: 'Water Level (m)', color: '#0b5ed7', font: { size: 14, weight: 'bold' }}, ticks: { color: '#0b5ed7', callback: (v) => v.toFixed(1) + 'm' }, grid: { color: 'rgba(0,0,0,0.1)' }},
-      y1: { type: 'linear', display: true, position: 'right', beginAtZero: true, max: 10, title: { display: true, text: 'Rainfall (mm)', color: '#15a3c9', font: { size: 14, weight: 'bold' }}, ticks: { color: '#15a3c9', callback: (v) => v + 'mm' }, grid: { drawOnChartArea: false }}
+      // y1: { type: 'linear', display: true, position: 'right', beginAtZero: true, max: 10, title: { display: true, text: 'Rainfall (mm)', color: '#15a3c9', font: { size: 14, weight: 'bold' }}, ticks: { color: '#15a3c9', callback: (v) => v + 'mm' }, grid: { drawOnChartArea: false }}
     },
     elements: { line: { tension: 0.4 }, point: { radius: 0, hoverRadius: 5 }},
     interaction: { intersect: false, mode: 'index' }
