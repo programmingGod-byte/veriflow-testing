@@ -27,6 +27,7 @@ import MediaViewer from '../components/DisplayImageAndVideos';
 // import FlowAngleDashboard from '../components/FlowDirectionChart';
 import TemperatureChart from '../components/TemperatureChart';
 import BatteryChart from '../components/BatteryLevel';
+import WeatherForecast from '../components/weatherForcast';
 // Mock data based on the provided images
 const riverData = {
   flowDirection: 62.5,
@@ -450,6 +451,16 @@ export default function RealtimeDataPage() {
             </div>
           </>
         )}
+
+
+        <>
+        
+        {
+          iseUserAdmin && (
+           <WeatherForecast latitude={value.latitude} longitude={value.longitude}/> 
+          )
+        }
+        </>
 
 
 
