@@ -295,6 +295,7 @@ useEffect(() => {
     }
   }, [selectedDate, data]);
 
+
   const fetchData = async (isRefresh = false) => {
     if (!value.machineCode) return;
     if (isRefresh) setRefreshing(true);
@@ -321,17 +322,23 @@ useEffect(() => {
         }
       });
 
+      // --- Start of modification: Calculate and set latest values ---
+
       const uniqueTimestamps = [...new Set(parsedData.map(d => d.timestamp))].sort();
+      
+      // Update overall stats (Mean, Max, and their % increase)
       if (uniqueTimestamps.length > 0) {
         const latestTimestamp = uniqueTimestamps[uniqueTimestamps.length - 1];
         const latestData = parsedData.filter(d => d.timestamp === latestTimestamp);
         let maxVelocity = 0;
         let meanVelocity = 0;
-        latestData.forEach(item => {
-          maxVelocity = Math.max(maxVelocity, item.velocity);
-          meanVelocity += item.velocity;
-        });
-        meanVelocity /= latestData.length;
+        if (latestData.length > 0) {
+          latestData.forEach(item => {
+            maxVelocity = Math.max(maxVelocity, item.velocity);
+            meanVelocity += item.velocity;
+          });
+          meanVelocity /= latestData.length;
+        }
         setMaxVelocity(maxVelocity);
         setMeanVelocity(meanVelocity);
       
@@ -340,11 +347,13 @@ useEffect(() => {
           const prevData = parsedData.filter(d => d.timestamp === previousTimestamp);
           let prevMaxVelocity = 0;
           let prevMeanVelocity = 0;
-          prevData.forEach(item => {
-            prevMaxVelocity = Math.max(prevMaxVelocity, item.velocity);
-            prevMeanVelocity += item.velocity;
-          });
-          prevMeanVelocity /= prevData.length;
+          if (prevData.length > 0) {
+            prevData.forEach(item => {
+              prevMaxVelocity = Math.max(prevMaxVelocity, item.velocity);
+              prevMeanVelocity += item.velocity;
+            });
+            prevMeanVelocity /= prevData.length;
+          }
           const maxVelocityIncrease = prevMaxVelocity !== 0 ? ((maxVelocity - prevMaxVelocity) / prevMaxVelocity * 100) : 0;
           const meanVelocityIncrease = prevMeanVelocity !== 0 ? ((meanVelocity - prevMeanVelocity) / prevMeanVelocity * 100) : 0;
           setMaxVelocityIncrease(maxVelocityIncrease.toFixed(2));
@@ -356,20 +365,24 @@ useEffect(() => {
       const timeSeries = calculateTimeSeriesData(parsedData);
       setTimeSeriesData(timeSeries);
 
-      const timestamps = [...new Set(parsedData.map(d => d.timestamp))];
-      const dates = [...new Set(timestamps.map(ts => ts.split(' ')[0]))].sort().reverse();
+      // Automatically select the latest timestamp for the chart
+      const dates = [...new Set(uniqueTimestamps.map(ts => ts.split(' ')[0]))].sort().reverse();
       setAvailableDates(dates);
 
       if (dates.length > 0) {
         const latestDate = dates[0];
+        // Set the latest date for the dropdowns
         setSelectedDate(latestDate);
         setManualDate(formatDateForInput(latestDate));
         setDateRangeStart(formatDateForInput(dates[dates.length - 1]));
         setDateRangeEnd(formatDateForInput(latestDate));
-        const timesForDate = timestamps.filter(ts => ts.startsWith(latestDate)).map(ts => ts.split(' ')[1]).sort().reverse();
+        
+        const timesForDate = uniqueTimestamps.filter(ts => ts.startsWith(latestDate)).map(ts => ts.split(' ')[1]).sort().reverse();
         setAvailableTimes(timesForDate);
+        
         if (timesForDate.length > 0) {
           const latestTime = timesForDate[0];
+          // Set the latest time for the dropdowns
           setSelectedTime(latestTime);
           setManualTime(latestTime);
           setTimeRangeStart(timesForDate[timesForDate.length - 1]);
@@ -377,6 +390,7 @@ useEffect(() => {
         }
       }
       setLastFetchTime(new Date());
+      // --- End of modification ---
 
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -386,6 +400,7 @@ useEffect(() => {
       setRefreshing(false);
     }
   };
+  
 
   useEffect(() => {
     if (timeSelectionMode === 'manual' && manualDate && manualTime) {

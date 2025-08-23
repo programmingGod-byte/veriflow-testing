@@ -8,12 +8,20 @@ const DELHI_COORDS = {
   longitude: 77.2090,
 };
 
-const WeatherForecast = ({ latitude = DELHI_COORDS.latitude, longitude = DELHI_COORDS.longitude }) => {
+import {  useContext } from 'react';
+import { MyContext } from '../providers';
+
+const WeatherForecast = (props) => {
+  // console.log('WeatherForecast component rendered with coords:', { latitude, longitude });  
   const [forecast, setForecast] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [locationName, setLocationName] = useState('Delhi');
+  const { value, setValue,iseUserAdmin } = useContext(MyContext)
+  const latitude = value?.latitude ;
+  const longitude = value?.longitude ;
 
+  console.log("value from context",value)
   useEffect(() => {
     const fetchWeatherData = async () => {
       setIsLoading(true);
