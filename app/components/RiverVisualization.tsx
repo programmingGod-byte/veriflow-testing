@@ -77,24 +77,53 @@ const formatDateForAPI = (date: Date) => {
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 };
 
-const fetchAndParseRainfallData = async () => {
+const fetchAndParseRainfallData = async (ipAddress) => {
   try {
-    const response = await fetch('/rainfall.csv');
+    const response = await fetch(`/api/rainfall?ip=${ipAddress}`);
     if (!response.ok) throw new Error(`Failed to fetch rainfall.csv: ${response.statusText}`);
+    
     const csvText = await response.text();
     const lines = csvText.split('\n');
-    return lines.map(line => line.trim()).filter(line => line).map(line => {
-      const [datePart, timePart, rainfallStr] = line.split(',');
-      if (!datePart || !timePart || rainfallStr === undefined) return null;
-      const rainfall = parseFloat(rainfallStr);
-      if (isNaN(rainfall)) return null;
-      return { parsedDate: parseRainfallTimestamp(datePart, timePart), rainfall: rainfall, timestamp: `${datePart} ${timePart}` };
-    }).filter(item => item !== null).sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
+    
+    // Skip the header row (first line)
+    const dataLines = lines.slice(1);
+    
+    return dataLines
+      .map(line => line.trim())
+      .filter(line => line) // Remove empty lines
+      .map(line => {
+        const [timestampStr, rainfallStr] = line.split(',');
+        
+        // Validate that we have both values
+        if (!timestampStr || rainfallStr === undefined) return null;
+        
+        const rainfallInches = parseFloat(rainfallStr);
+        if (isNaN(rainfallInches)) return null;
+        
+        // Convert from inches to millimeters (1 inch = 25.4 mm)
+        const rainfallMm = rainfallInches * 25.4;
+        
+        // Parse the ISO timestamp format (2025-07-26 17:48:05)
+        const parsedDate = new Date(timestampStr);
+        
+        // Validate the date
+        if (isNaN(parsedDate.getTime())) return null;
+        
+        return {
+          parsedDate: parsedDate,
+          rainfall: rainfallMm,
+          timestamp: timestampStr
+        };
+      })
+      .filter(item => item !== null)
+      .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
+      
   } catch (error) {
     console.error("Error fetching or parsing rainfall data:", error);
     return [];
   }
 };
+
 
 const filterRainfallByDateRange = (rainfallData, startDate, endDate) => {
   return rainfallData.filter(item => item.parsedDate >= startDate && item.parsedDate <= endDate);
@@ -262,8 +291,8 @@ const WaterLevelMonitor = ({setCurrentDepth}) => {
   }, []);
 
   useEffect(() => {
-    fetchAndParseRainfallData().then(setRawRainfallData);
-  }, []);
+    fetchAndParseRainfallData(context.value.machineCode).then(setRawRainfallData);
+  }, [context?.value?.machineCode]);
 
   useEffect(() => {
     if (context.value == null) return;
