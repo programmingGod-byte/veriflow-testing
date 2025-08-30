@@ -19,7 +19,6 @@ import {
 import { Line } from 'react-chartjs-2';
 import { Calendar, Clock, RefreshCw, AlertTriangle, Droplets, TrendingUp, Activity, Wifi, WifiOff, ChevronDown, Download, CloudRain } from 'lucide-react';
 import { MyContext } from '../providers';
-// UPDATE: Import the new RainfallBarChart component
 import RainfallBarChart from './RainfallHistogram';
 
 // Register Chart.js components
@@ -36,34 +35,19 @@ ChartJS.register(
   Filler
 );
 
-/**
- * A simple 1D Kalman Filter.
- * @param {object} options - The options for the filter.
- * @param {number} [options.R=1] - Process noise covariance.
- * @param {number} [options.Q=1] - Measurement noise covariance.
- */
 class KalmanFilter {
   constructor({ R = 1, Q = 1, A = 1, C = 1 } = {}) {
-    this.R = R; // Process noise
-    this.Q = Q; // Measurement noise
-    this.A = A; // State transition
-    this.C = C; // Measurement relationship
-    this.x = null; // State (the filtered value)
-    this.P = null; // Covariance of the state
+    this.R = R; this.Q = Q; this.A = A; this.C = C;
+    this.x = null; this.P = null;
   }
-
   filter(z) {
     if (this.x === null) {
-      // Initialize state on the first measurement
       this.x = (1 / this.C) * z;
       this.P = (1 / (this.C * this.C)) * this.Q;
     } else {
-      // Prediction step
       const predX = this.A * this.x;
       const predP = this.A * this.P * this.A + this.R;
-
-      // Update (correction) step
-      const K = predP * this.C * (1 / (this.C * predP * this.C + this.Q)); // Kalman Gain
+      const K = predP * this.C * (1 / (this.C * predP * this.C + this.Q));
       this.x = predX + K * (z - this.C * predX);
       this.P = predP - K * this.C * predP;
     }
@@ -71,25 +55,19 @@ class KalmanFilter {
   }
 }
 
-
-// Parse timestamp function for water level data
 const parseTimestamp = (timestamp: string) => {
   const [datePart, timePart] = timestamp.split(' ');
   const [month, day, year] = datePart.split('/');
   const [hour, minute] = timePart.split(':');
-  const fullYear = parseInt(year) + 2000;
-  return new Date(fullYear, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
+  return new Date(parseInt(year) + 2000, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
 };
 
-// New function to parse timestamp from rainfall.csv
 const parseRainfallTimestamp = (dateStr: string, timeStr: string) => {
     const [day, month, year] = dateStr.split('/');
     const [hour, minute, second] = timeStr.split(':');
-    const fullYear = parseInt(year) + 2000;
-    return new Date(fullYear, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute), parseInt(second));
+    return new Date(parseInt(year) + 2000, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute), parseInt(second));
 };
 
-// Format date for API request (YYYY-MM-DD HH:mm)
 const formatDateForAPI = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -98,77 +76,92 @@ const formatDateForAPI = (date: Date) => {
   const minutes = String(date.getMinutes()).padStart(2, '0');
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 };
-// /home/shivam/Desktop/VisiFlow-main/public/rainfall.csv
-// New function to fetch and parse rainfall data from CSV
+
 const fetchAndParseRainfallData = async () => {
   try {
     const response = await fetch('/rainfall.csv');
-    if (!response.ok) {
-      throw new Error(`Failed to fetch rainfall.csv: ${response.statusText}`);
-    }
+    if (!response.ok) throw new Error(`Failed to fetch rainfall.csv: ${response.statusText}`);
     const csvText = await response.text();
-    console.log(csvText);
     const lines = csvText.split('\n');
-    const parsedData = lines
-      .map(line => line.trim())
-      .filter(line => line)
-      .map(line => {
-        const [datePart, timePart, rainfallStr] = line.split(',');
-        if (!datePart || !timePart || rainfallStr === undefined) return null;
-        const rainfall = parseFloat(rainfallStr);
-        if (isNaN(rainfall)) return null;
-        return {
-          parsedDate: parseRainfallTimestamp(datePart, timePart),
-          rainfall: rainfall,
-          timestamp: `${datePart} ${timePart}`
-        };
-      })
-      .filter(item => item !== null)
-      .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
-    return parsedData;
+    return lines.map(line => line.trim()).filter(line => line).map(line => {
+      const [datePart, timePart, rainfallStr] = line.split(',');
+      if (!datePart || !timePart || rainfallStr === undefined) return null;
+      const rainfall = parseFloat(rainfallStr);
+      if (isNaN(rainfall)) return null;
+      return { parsedDate: parseRainfallTimestamp(datePart, timePart), rainfall: rainfall, timestamp: `${datePart} ${timePart}` };
+    }).filter(item => item !== null).sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
   } catch (error) {
     console.error("Error fetching or parsing rainfall data:", error);
     return [];
   }
 };
 
-// Filter rainfall data based on date range
 const filterRainfallByDateRange = (rainfallData, startDate, endDate) => {
-  return rainfallData.filter(item => 
-    item.parsedDate >= startDate && item.parsedDate <= endDate
-  );
+  return rainfallData.filter(item => item.parsedDate >= startDate && item.parsedDate <= endDate);
 };
 
-// CSV export function
+// ====================================================================================
+// MODIFIED FUNCTION 1 of 2: exportToCSV
+// ====================================================================================
+/**
+ * Exports combined water and rainfall data to a CSV file.
+ * Includes columns for both raw and Kalman-filtered water depth.
+ */
 const exportToCSV = (waterData, rainfallData, filename) => {
-  const csvHeaders = ['Type', 'Timestamp', 'Date', 'Time', 'Water Depth (m)', 'Rainfall (mm)', 'Status'];
-  const csvData = [];
-  
-  waterData.forEach(item => {
+  // CHANGED: Added 'Kalman Filtered Depth (m)' header and renamed original for clarity.
+  const csvHeaders = ['Type', 'Timestamp', 'Date', 'Time', 'Raw Water Depth (m)', 'Kalman Filtered Depth (m)', 'Rainfall (mm)', 'Status'];
+
+  // Map water data to a standard format for merging
+  const mappedWaterData = waterData.map(item => {
     const date = item.parsedDate;
     let status = 'Normal';
     if (item.meanDepth >= 1.7) status = 'ALARM';
     else if (item.meanDepth >= 1.3) status = 'ALERT';
-    csvData.push([
-      'Water Level', item.timestamp, date.toLocaleDateString('en-US'), date.toLocaleTimeString('en-US'),
-      item.meanDepth.toFixed(3), '', status
-    ]);
+
+    return {
+      type: 'Water Level',
+      timestamp: item.timestamp,
+      parsedDate: item.parsedDate,
+      dateStr: date.toLocaleDateString('en-US'),
+      timeStr: date.toLocaleTimeString('en-US'),
+      // CHANGED: Added both raw and filtered depth
+      rawDepth: item.rawDepth.toFixed(3),
+      filteredDepth: item.meanDepth.toFixed(3),
+      rainfall: '',
+      status: status
+    };
   });
-  
-  rainfallData.forEach(item => {
+
+  // Map rainfall data to the same standard format
+  const mappedRainfallData = rainfallData.map(item => {
     const date = item.parsedDate;
-    csvData.push([
-      'Rainfall', item.timestamp, date.toLocaleDateString('en-US'), date.toLocaleTimeString('en-US'),
-      '', item.rainfall.toFixed(1), ''
-    ]);
+    return {
+      type: 'Rainfall',
+      timestamp: item.timestamp,
+      parsedDate: item.parsedDate,
+      dateStr: date.toLocaleDateString('en-US'),
+      timeStr: date.toLocaleTimeString('en-US'),
+      rawDepth: '',
+      filteredDepth: '',
+      rainfall: item.rainfall.toFixed(1),
+      status: ''
+    };
   });
-  
-  csvData.sort((a, b) => new Date(a[1]).getTime() - new Date(b[1]).getTime());
-  
-  const csvContent = [csvHeaders, ...csvData].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+  // Combine, sort by date, and convert to array format for the CSV
+  const combinedData = [...mappedWaterData, ...mappedRainfallData];
+  combinedData.sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
+
+  const csvData = combinedData.map(item => [
+    item.type, item.timestamp, item.dateStr, item.timeStr,
+    item.rawDepth, item.filteredDepth, item.rainfall, item.status
+  ]);
+
+  // Generate CSV content and trigger download
+  const csvContent = [csvHeaders, ...csvData].map(row => row.map(cell => `"${String(cell)}"`).join(',')).join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
-  
+
   if (link.download !== undefined) {
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
@@ -180,91 +173,50 @@ const exportToCSV = (waterData, rainfallData, filename) => {
   }
 };
 
-/**
- * Reduces the number of data points per day to a maximum of `maxPoints`.
- * This version correctly partitions the data to ensure the right number of points are generated.
- * @param {Array} sortedData - The input data, sorted by date.
- * @param {number} maxPoints - The maximum number of points to have per day.
- * @returns {Array} The downsampled data.
- */
 
-
-
-/**
- * Reduces the number of data points to exactly 24 per day (one per hour)
- * by creating uniform one-hour buckets and selecting the peak value from each.
- * This ensures points are evenly spaced across the day.
- * @param {Array} sortedData - The input data, sorted by date.
- * @returns {Array} The downsampled data with uniform hourly spacing.
- */
 const downsampleDataPerDay = (sortedData) => {
     if (!sortedData || sortedData.length === 0) return [];
-    
-    // The target number of points for a full day.
     const pointsPerDay = 20;
-
-    // Group all data points by their calendar day.
     const groupedByDay = sortedData.reduce((acc, item) => {
         const day = item.parsedDate.toDateString();
         if (!acc[day]) acc[day] = [];
         acc[day].push(item);
         return acc;
     }, {});
-
     const finalData = [];
     const sortedDays = Object.keys(groupedByDay).sort((a, b) => new Date(a) - new Date(b));
-
     for (const day of sortedDays) {
         const dayPoints = groupedByDay[day];
-        // If the day already has 24 or fewer points, just keep them all.
         if (dayPoints.length <= pointsPerDay) {
             finalData.push(...dayPoints);
             continue;
         }
-
         const pointsForThisDay = [];
-        
-        // Define the start of the day for bucket calculations.
         const dayStart = new Date(dayPoints[0].parsedDate);
         dayStart.setHours(0, 0, 0, 0);
-
-        // Calculate the size of each time bucket (1 hour in milliseconds).
         const bucketSizeMs = (60 * 60 * 1000);
-
-        // Iterate through each of the 24 hourly buckets for the day.
         for (let i = 0; i < pointsPerDay; i++) {
             const bucketStartTime = dayStart.getTime() + i * bucketSizeMs;
             const bucketEndTime = bucketStartTime + bucketSizeMs;
-
-            // Find all the original data points that fall into the current bucket.
             const pointsInBucket = dayPoints.filter(p => {
                 const pointTime = p.parsedDate.getTime();
                 return pointTime >= bucketStartTime && pointTime < bucketEndTime;
             });
-
-            // If the bucket has data, find the peak point and add it.
             if (pointsInBucket.length > 0) {
-                // Find the point with the highest water depth in this bucket.
-                const peakPoint = pointsInBucket.reduce((max, p) => 
-                    p.meanDepth > max.meanDepth ? p : max, 
-                    pointsInBucket[0]
-                );
+                const peakPoint = pointsInBucket.reduce((max, p) => p.meanDepth > max.meanDepth ? p : max, pointsInBucket[0]);
                 pointsForThisDay.push(peakPoint);
             }
         }
-        
         finalData.push(...pointsForThisDay);
     }
     return finalData;
 };
 
 const WaterLevelMonitor = ({setCurrentDepth}) => {
-  // UPDATE: Adjusted Kalman filter parameters for less smoothing
-const KALMAN_PROCESS_NOISE = 0.2; // Increased from 0.008
-const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
-  const GAP_DETECTION_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
-  const MAX_POINTS_PER_DAY_LARGE_RANGE = 10; 
-
+  const KALMAN_PROCESS_NOISE = 0.2;
+  const KALMAN_MEASUREMENT_NOISE = 0.8;
+  const GAP_DETECTION_THRESHOLD_MS = 30 * 60 * 1000;
+  const MAX_POINTS_PER_DAY_LARGE_RANGE = 10;
   const [timeRange, setTimeRange] = useState('1h');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -324,6 +276,9 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
     setFilteredRainfallData(filtered);
   };
   
+  // ====================================================================================
+  // MODIFIED FUNCTION 2 of 2: processAndSetData
+  // ====================================================================================
   const processAndSetData = (apiData, startDate, endDate, daysInRange) => {
     console.log(context.value.depth)
     const transformedData = apiData.map(item => ({
@@ -345,11 +300,18 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
 
     sortedData.forEach(item => {
         const currentTimestamp = item.parsedDate.getTime();
-        if (lastTimestamp && (currentTimestamp - lastTimestamp > GAP_DETECTION_THRESHOLD_MS)) {
-            kf = new KalmanFilter({ R: KALMAN_PROCESS_NOISE, Q: KALMAN_MEASUREMENT_NOISE });
-        }
+        // if (lastTimestamp && (currentTimestamp - lastTimestamp > GAP_DETECTION_THRESHOLD_MS)) {
+        //     kf = new KalmanFilter({ R: KALMAN_PROCESS_NOISE, Q: KALMAN_MEASUREMENT_NOISE });
+        // }
         const smoothedDepth = kf.filter(item.meanDepth);
-        robustlyFilteredData.push({ ...item, meanDepth: smoothedDepth });
+        // CHANGED: Store both the original (raw) and smoothed depth.
+        // `meanDepth` will now be the filtered value, used for charting and stats.
+        // `rawDepth` is the new property for the original value, used for export.
+        robustlyFilteredData.push({
+          ...item,
+          rawDepth: item.meanDepth,
+          meanDepth: smoothedDepth 
+        });
         lastTimestamp = currentTimestamp;
     });
     
@@ -361,9 +323,7 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
 
   const fetchDataByHours = async (hours) => {
     try {
-      setLoading(true);
-      setError('');
-      setApiStatus('connecting');
+      setLoading(true); setError(''); setApiStatus('connecting');
       const now = new Date();
       const startTime = new Date(now.getTime() - (hours * 60 * 60 * 1000));
       const uri = `/api/newversion/depth/range?start=${encodeURIComponent(formatDateForAPI(startTime))}&end=${encodeURIComponent(formatDateForAPI(now))}&ip=${context?.value?.machineCode}`;
@@ -372,19 +332,13 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
       const apiData = await response.json();
       processAndSetData(apiData, startTime, now, hours / 24);
     } catch (err) {
-      console.error('Error fetching data:', err);
-      setError(`Failed to fetch data: ${err.message}`);
-      setApiStatus('error');
-    } finally {
-      setLoading(false);
-    }
+      console.error('Error fetching data:', err); setError(`Failed to fetch data: ${err.message}`); setApiStatus('error');
+    } finally { setLoading(false); }
   };
   
   const fetchDataByDays = async (days) => {
     try {
-      setLoading(true);
-      setError('');
-      setApiStatus('connecting');
+      setLoading(true); setError(''); setApiStatus('connecting');
       const response = await fetch(`/api/newversion/depth/${days}?ip=${context.value.machineCode}`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const apiData = await response.json();
@@ -392,19 +346,13 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
       const startTime = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
       processAndSetData(apiData, startTime, now, days);
     } catch (err) {
-      console.error('Error fetching data:', err);
-      setError(`Failed to fetch data: ${err.message}`);
-      setApiStatus('error');
-    } finally {
-      setLoading(false);
-    }
+      console.error('Error fetching data:', err); setError(`Failed to fetch data: ${err.message}`); setApiStatus('error');
+    } finally { setLoading(false); }
   };
   
   const fetchDataByDateRange = async (startDateTime, endDateTime) => {
     try {
-      setLoading(true);
-      setError('');
-      setApiStatus('connecting');
+      setLoading(true); setError(''); setApiStatus('connecting');
       const uri = `/api/newversion/depth/range?start=${encodeURIComponent(formatDateForAPI(startDateTime))}&end=${encodeURIComponent(formatDateForAPI(endDateTime))}&ip=${context.value.machineCode}`;
       const response = await fetch(uri);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -412,12 +360,8 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
       const daysInRange = (endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60 * 60 * 24);
       processAndSetData(apiData, startDateTime, endDateTime, daysInRange);
     } catch (err) {
-      console.error('Error fetching data:', err);
-      setError(`Failed to fetch data: ${err.message}`);
-      setApiStatus('error');
-    } finally {
-      setLoading(false);
-    }
+      console.error('Error fetching data:', err); setError(`Failed to fetch data: ${err.message}`); setApiStatus('error');
+    } finally { setLoading(false); }
   };
   
   const handleDownloadCSV = async () => {
@@ -437,11 +381,8 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
       }
       exportToCSV(data, filteredRainfallData, filename);
     } catch (error) {
-      console.error('Error downloading CSV:', error);
-      alert('Error downloading CSV file');
-    } finally {
-      setIsDownloading(false);
-    }
+      console.error('Error downloading CSV:', error); alert('Error downloading CSV file');
+    } finally { setIsDownloading(false); }
   };
   
   useEffect(() => {
@@ -474,13 +415,10 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
     if (setCurrentDepth) setCurrentDepth(currentDepth.toFixed(2));
     const rainfalls = filteredRainfallData.map(d => d.rainfall);
     return {
-      current: currentDepth,
-      max: Math.max(...depths),
-      min: Math.min(...depths),
+      current: currentDepth, max: Math.max(...depths), min: Math.min(...depths),
       average: depths.reduce((a, b) => a + b, 0) / depths.length,
       alertCount: depths.filter(d => d >= ALERT_LEVEL && d < ALARM_LEVEL).length,
-      alarmCount: depths.filter(d => d >= ALARM_LEVEL).length,
-      totalReadings: data.length,
+      alarmCount: depths.filter(d => d >= ALARM_LEVEL).length, totalReadings: data.length,
       totalRainfall: rainfalls.reduce((a, b) => a + b, 0),
       maxRainfall: rainfalls.length > 0 ? Math.max(...rainfalls) : 0,
       rainfallReadings: filteredRainfallData.length
@@ -488,64 +426,28 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
   };
 
   const createCombinedTimeline = () => {
-    if (data.length === 0) {
-      return { labels: [], waterData: [], rainfallData: [], alertData: [], alarmData: [], combinedData: [] };
-    }
-
+    if (data.length === 0) return { labels: [], waterData: [], rainfallData: [], alertData: [], alarmData: [], combinedData: [] };
     const rainfallMap = new Map();
     filteredRainfallData.forEach(item => {
       const key = new Date(item.parsedDate).setSeconds(0, 0);
       rainfallMap.set(key, item.rainfall);
     });
-
-    const chartLabels = [];
-    const chartWaterData = [];
-    const chartRainfallData = [];
-    const chartAlertData = [];
-    const chartAlarmData = [];
-    const combinedData = [];
-    let lastDay = null;
-
+    const chartLabels = [], chartWaterData = [], chartRainfallData = [], chartAlertData = [], chartAlarmData = [], combinedData = [];
     data.forEach(point => {
-      const currentDay = point.parsedDate.toDateString();
-      // if (lastDay !== null && currentDay !== lastDay) {
-      //   chartLabels.push('');
-      //   chartWaterData.push(null);
-      //   chartRainfallData.push(null);
-      //   chartAlertData.push(null);
-      //   chartAlarmData.push(null);
-      //   combinedData.push(null);
-      // }
-
       const labelDate = point.parsedDate;
       const formattedLabel = `${String(labelDate.getMonth() + 1).padStart(2, '0')}/${String(labelDate.getDate()).padStart(2, '0')}/${labelDate.getFullYear()} ${String(labelDate.getHours()).padStart(2, '0')}:${String(labelDate.getMinutes()).padStart(2, '0')}`;
       chartLabels.push(formattedLabel);
       chartWaterData.push(point.meanDepth);
       chartAlertData.push(ALERT_LEVEL);
       chartAlarmData.push(ALARM_LEVEL);
-
       const key = new Date(point.parsedDate).setSeconds(0, 0);
       const rainfallValue = rainfallMap.get(key) || null;
       chartRainfallData.push(rainfallValue);
-      
-      combinedData.push({
-          timestamp: point.parsedDate.getTime(),
-          parsedDate: point.parsedDate,
-          waterLevel: point.meanDepth,
-          rainfall: rainfallValue
-      });
-      lastDay = currentDay;
+      combinedData.push({ timestamp: point.parsedDate.getTime(), parsedDate: point.parsedDate, waterLevel: point.meanDepth, rainfall: rainfallValue });
     });
-
-    return { 
-        labels: chartLabels, 
-        waterData: chartWaterData, 
-        rainfallData: chartRainfallData, 
-        alertData: chartAlertData, 
-        alarmData: chartAlarmData, 
-        combinedData: combinedData
-    };
+    return { labels: chartLabels, waterData: chartWaterData, rainfallData: chartRainfallData, alertData: chartAlertData, alarmData: chartAlarmData, combinedData: combinedData };
   };
+  
   const chartTimelineData = createCombinedTimeline();
 
   const chartOptions: ChartOptions<'line'> = {
@@ -568,7 +470,6 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
               if (depth >= ALARM_LEVEL) status = 'ALARM'; else if (depth >= ALERT_LEVEL) status = 'ALERT';
               return `Water Level: ${depth.toFixed(3)}m (${status})`;
             }
-            
             return '';
           }
         }
@@ -576,23 +477,12 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
     },
     scales: {
       x: { 
-  display: true, 
-  title: { display: true, text: 'Date & Time', color: '#374151', font: { size: 14, weight: 'bold' }}, 
-  ticks: { 
-    color: '#6b7280', 
-    maxTicksLimit: Math.min(20, Math.max(5, Math.floor(chartTimelineData.labels.length / 10))), // Dynamic limit
-    maxRotation: 45,
-    minRotation: 45,
-    autoSkip: true, // Add this
-    autoSkipPadding: 10, // Add this
-    callback: function(value, index, ticks) {
-      return this.getLabelForValue(value);
-    }
-  }, 
-  grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }
-},
+        display: true, title: { display: true, text: 'Date & Time', color: '#374151', font: { size: 14, weight: 'bold' }}, 
+        ticks: { color: '#6b7280', maxTicksLimit: Math.min(20, Math.max(5, Math.floor(chartTimelineData.labels.length / 10))), maxRotation: 45, minRotation: 45, autoSkip: true, autoSkipPadding: 10,
+          callback: function(value, index, ticks) { return this.getLabelForValue(value); }
+        }, grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }
+      },
       y: { type: 'linear', display: true, position: 'left', beginAtZero: true, title: { display: true, text: 'Water Level (m)', color: '#0b5ed7', font: { size: 14, weight: 'bold' }}, ticks: { color: '#0b5ed7', callback: (v) => v.toFixed(1) + 'm' }, grid: { color: 'rgba(0,0,0,0.1)' }},
-      // y1: { type: 'linear', display: true, position: 'right', beginAtZero: true, max: 10, title: { display: true, text: 'Rainfall (mm)', color: '#15a3c9', font: { size: 14, weight: 'bold' }}, ticks: { color: '#15a3c9', callback: (v) => v + 'mm' }, grid: { drawOnChartArea: false }}
     },
     elements: { line: { tension: 0.4 }, point: { radius: 0, hoverRadius: 5 }},
     interaction: { intersect: false, mode: 'index' }
@@ -778,7 +668,6 @@ const KALMAN_MEASUREMENT_NOISE = 0.8;  // Decreased from 0.5
         </div>
       </div>
       
-      {/* UPDATE: Use the new RainfallBarChart component */}
       <RainfallBarChart rainfallData={filteredRainfallData} />
 
     </div>
