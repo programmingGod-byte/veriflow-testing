@@ -294,7 +294,7 @@ export default function RealtimeDataPage() {
 
 {value?.machineType !== "tarang" && (
             <StatCard
-              title="Battry Health"
+              title="Battery Health"
               value={batteryLevel}
               unit="%"
               icon={

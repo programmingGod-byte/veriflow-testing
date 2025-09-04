@@ -85,11 +85,23 @@ interface VelocityChartProps {
 
 type TimeSelectionMode = 'dropdown' | 'manual' | 'range';
 
+// Helper function to reliably parse "DD-MM-YYYY HH:MM:SS" timestamps
+const parseCustomTimestamp = (timestamp: string): Date => {
+    const [datePart, timePart] = timestamp.split(' ');
+    if (!datePart || !timePart) return new Date(timestamp); // Fallback for other formats
+    const [day, month, year] = datePart.split('-').map(Number);
+    const [hours, minutes, seconds] = timePart.split(':').map(Number);
+    // Month is 0-indexed in JavaScript Date constructor
+    return new Date(year, month - 1, day, hours, minutes, seconds);
+};
+
+
 const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setMaxVelocity, setMeanVelocityIncrease, setMaxVelocityIncrease }: VelocityChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart.Chart | null>(null);
   const { value, setValue, iseUserAdmin } = useContext(MyContext);
   const [data, setData] = useState<VelocityData[]>([]);
+  const [uniqueTimestamps, setUniqueTimestamps] = useState<string[]>([]);
   const [filteredData, setFilteredData] = useState<VelocityData[]>([]);
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
   const [filteredTimeSeriesData, setFilteredTimeSeriesData] = useState<TimeSeriesData[]>([]);
@@ -116,47 +128,23 @@ const VelocityChart = ({ flowDirection: propFlowDirection, setMeanVelocity, setM
   const [kalmanQ, setKalmanQ] = useState(0.001);
   const [kalmanR, setKalmanR] = useState(0.1);
 
-
-  // CUT THIS CODE (from line 515)
-const timeSeriesWithGaps = useMemo(() => {
-  if (filteredTimeSeriesData.length === 0) return [];
-
-  const result: TimeSeriesData[] = [filteredTimeSeriesData[0]];
-  for (let i = 1; i < filteredTimeSeriesData.length; i++) {
-    const prevPoint = filteredTimeSeriesData[i - 1];
-    const currentPoint = filteredTimeSeriesData[i];
-    const prevDate = new Date(prevPoint.timestamp);
-    const currentDate = new Date(currentPoint.timestamp);
-    const diffMinutes = (currentDate.getTime() - prevDate.getTime()) / (1000 * 60);
-
-    if (diffMinutes > 60) {
-      result.push({ ...currentPoint, meanVelocity: null, maxVelocity: null });
+  // Apply Kalman filter directly to the filtered time series data
+  useEffect(() => {
+    if (filteredTimeSeriesData.length === 0) {
+      setProcessedChartData([]);
+      return;
     }
-    result.push(currentPoint);
-  }
-  return result;
-}, [filteredTimeSeriesData]);
 
-useEffect(() => {
-  if (timeSeriesWithGaps.length === 0) {
-    setProcessedChartData([]);
-    return;
-  }
+    const kf = new KalmanFilter({ R: kalmanR, Q: kalmanQ });
 
-  let kf = new KalmanFilter({ R: kalmanR, Q: kalmanQ });
+    const processedData = filteredTimeSeriesData.map(point => ({
+      ...point,
+      kalmanVelocity: point.meanVelocity !== null ? kf.update(point.meanVelocity) : null,
+    }));
+    
+    setProcessedChartData(processedData);
 
-  const filteredResult = timeSeriesWithGaps.map(point => {
-    if (point.meanVelocity === null) {
-      kf = new KalmanFilter({ R: kalmanR, Q: kalmanQ });
-      return { ...point, kalmanVelocity: null };
-    }
-    const kalmanVelocity = kf.update(point.meanVelocity);
-    return { ...point, kalmanVelocity };
-  });
-
-  setProcessedChartData(filteredResult);
-
-}, [timeSeriesWithGaps, kalmanQ, kalmanR]);
+  }, [filteredTimeSeriesData, kalmanQ, kalmanR]);
 
 
   const timePeriodOptions = [
@@ -251,7 +239,7 @@ useEffect(() => {
       timeSeriesResult.push({ timestamp, date, time, meanVelocity, maxVelocity });
     });
 
-    return timeSeriesResult.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    return timeSeriesResult.sort((a, b) => parseCustomTimestamp(a.timestamp).getTime() - parseCustomTimestamp(b.timestamp).getTime());
   };
 
   const filterTimeSeriesData = (data: TimeSeriesData[], period: string) => {
@@ -282,8 +270,8 @@ useEffect(() => {
 
   useEffect(() => {
     if (selectedDate && data.length > 0) {
-      const timestamps = [...new Set(data.map(d => d.timestamp))];
-      const timesForDate = timestamps
+      const allTimestamps = [...new Set(data.map(d => d.timestamp))];
+      const timesForDate = allTimestamps
         .filter(ts => ts.startsWith(selectedDate))
         .map(ts => ts.split(' ')[1])
         .sort()
@@ -321,14 +309,14 @@ useEffect(() => {
           }
         }
       });
-
-      // --- Start of modification: Calculate and set latest values ---
-
-      const uniqueTimestamps = [...new Set(parsedData.map(d => d.timestamp))].sort();
       
-      // Update overall stats (Mean, Max, and their % increase)
-      if (uniqueTimestamps.length > 0) {
-        const latestTimestamp = uniqueTimestamps[uniqueTimestamps.length - 1];
+      const sortedUniqueTimestamps = [...new Set(parsedData.map(d => d.timestamp))]
+          .sort((a, b) => parseCustomTimestamp(a).getTime() - parseCustomTimestamp(b).getTime());
+      setUniqueTimestamps(sortedUniqueTimestamps);
+      
+      // Update overall stats (Mean, Max, and their % increase) for the LATEST data
+      if (sortedUniqueTimestamps.length > 0) {
+        const latestTimestamp = sortedUniqueTimestamps[sortedUniqueTimestamps.length - 1];
         const latestData = parsedData.filter(d => d.timestamp === latestTimestamp);
         let maxVelocity = 0;
         let meanVelocity = 0;
@@ -342,8 +330,8 @@ useEffect(() => {
         setMaxVelocity(maxVelocity);
         setMeanVelocity(meanVelocity);
       
-        if (uniqueTimestamps.length > 1) {
-          const previousTimestamp = uniqueTimestamps[uniqueTimestamps.length - 2];
+        if (sortedUniqueTimestamps.length > 1) {
+          const previousTimestamp = sortedUniqueTimestamps[sortedUniqueTimestamps.length - 2];
           const prevData = parsedData.filter(d => d.timestamp === previousTimestamp);
           let prevMaxVelocity = 0;
           let prevMeanVelocity = 0;
@@ -366,31 +354,29 @@ useEffect(() => {
       setTimeSeriesData(timeSeries);
 
       // Automatically select the latest timestamp for the chart
-      const dates = [...new Set(uniqueTimestamps.map(ts => ts.split(' ')[0]))].sort().reverse();
+      const dates = [...new Set(sortedUniqueTimestamps.map(ts => ts.split(' ')[0]))].sort().reverse();
       setAvailableDates(dates);
 
       if (dates.length > 0) {
         const latestDate = dates[0];
-        // Set the latest date for the dropdowns
         setSelectedDate(latestDate);
         setManualDate(formatDateForInput(latestDate));
         setDateRangeStart(formatDateForInput(dates[dates.length - 1]));
         setDateRangeEnd(formatDateForInput(latestDate));
         
-        const timesForDate = uniqueTimestamps.filter(ts => ts.startsWith(latestDate)).map(ts => ts.split(' ')[1]).sort().reverse();
+        const timesForDate = sortedUniqueTimestamps.filter(ts => ts.startsWith(latestDate)).map(ts => ts.split(' ')[1]).sort().reverse();
         setAvailableTimes(timesForDate);
         
         if (timesForDate.length > 0) {
           const latestTime = timesForDate[0];
-          // Set the latest time for the dropdowns
           setSelectedTime(latestTime);
           setManualTime(latestTime);
-          setTimeRangeStart(timesForDate[timesForDate.length - 1]);
+          const earliestTime = sortedUniqueTimestamps.filter(ts => ts.startsWith(dates[dates.length - 1])).map(ts => ts.split(' ')[1]).sort()[0];
+          setTimeRangeStart(earliestTime);
           setTimeRangeEnd(latestTime);
         }
       }
       setLastFetchTime(new Date());
-      // --- End of modification ---
 
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -413,25 +399,56 @@ useEffect(() => {
     }
   }, [timeSelectionMode, manualDate, manualTime, data]);
 
+  // *** FIXED LOGIC ***
+  // This effect now correctly updates the bar chart AND recalculates stats/increases on selection change.
   useEffect(() => {
     if (timeSelectionMode === 'range') {
       const rangeFiltered = data.filter(d => isTimestampInRange(d.timestamp));
       setFilteredData(rangeFiltered);
-    } else if (selectedDate && selectedTime && data.length > 0) {
+      // Clear single-timestamp stats when in range mode
+      setMeanVelocity(null);
+      setMaxVelocity(null);
+      setMeanVelocityIncrease(null);
+      setMaxVelocityIncrease(null);
+    } else if (selectedDate && selectedTime && data.length > 0 && uniqueTimestamps.length > 0) {
       const targetTimestamp = `${selectedDate} ${selectedTime}`;
-      const filtered = data.filter(d => d.timestamp === targetTimestamp).sort((a, b) => a.section - b.section);
-      let maxVelocityi = 0;
-      let meanVelocityi = 0;
-      filtered.forEach(item => {
-        maxVelocityi = Math.max(maxVelocityi, item.velocity);
-        meanVelocityi += item.velocity;
-      });
-      meanVelocityi /= 10;
-      setMaxVelocity(maxVelocityi);
-      setMeanVelocity(meanVelocityi);
-      setFilteredData(filtered);
+      
+      const currentData = data.filter(d => d.timestamp === targetTimestamp).sort((a, b) => a.section - b.section);
+      setFilteredData(currentData); // Update bar chart data
+
+      if (currentData.length > 0) {
+        const currentMeanVelocity = currentData.reduce((sum, item) => sum + item.velocity, 0) / currentData.length;
+        const currentMaxVelocity = Math.max(...currentData.map(item => item.velocity));
+        setMeanVelocity(currentMeanVelocity);
+        setMaxVelocity(currentMaxVelocity);
+
+        const currentIndex = uniqueTimestamps.indexOf(targetTimestamp);
+        if (currentIndex > 0) {
+          const previousTimestamp = uniqueTimestamps[currentIndex - 1];
+          const prevData = data.filter(d => d.timestamp === previousTimestamp);
+
+          if (prevData.length > 0) {
+            const prevMeanVelocity = prevData.reduce((sum, item) => sum + item.velocity, 0) / prevData.length;
+            const prevMaxVelocity = Math.max(...prevData.map(item => item.velocity));
+
+            const meanIncrease = prevMeanVelocity !== 0 ? ((currentMeanVelocity - prevMeanVelocity) / prevMeanVelocity * 100) : 0;
+            const maxIncrease = prevMaxVelocity !== 0 ? ((currentMaxVelocity - prevMaxVelocity) / prevMaxVelocity * 100) : 0;
+            
+            setMeanVelocityIncrease(meanIncrease.toFixed(2));
+            setMaxVelocityIncrease(maxIncrease.toFixed(2));
+          } else {
+            setMeanVelocityIncrease(0); setMaxVelocityIncrease(0);
+          }
+        } else {
+          setMeanVelocityIncrease(0); setMaxVelocityIncrease(0);
+        }
+      } else {
+        setMeanVelocity(null); setMaxVelocity(null);
+        setMeanVelocityIncrease(null); setMaxVelocityIncrease(null);
+      }
     }
-  }, [selectedDate, selectedTime, data, timeSelectionMode, dateRangeStart, dateRangeEnd, timeRangeStart, timeRangeEnd]);
+  }, [selectedDate, selectedTime, data, uniqueTimestamps, timeSelectionMode, dateRangeStart, dateRangeEnd, timeRangeStart, timeRangeEnd]);
+
 
   useEffect(() => {
     if (timeSeriesData.length > 0) {
@@ -680,16 +697,13 @@ useEffect(() => {
                   <XAxis
                     dataKey="timestamp" stroke="#64748b" fontSize={11} angle={-45} textAnchor="end" height={80}
                     tickFormatter={(value) => {
-                      const dateObj = new Date(value);
+                      const dateObj = parseCustomTimestamp(value);
                       if (isNaN(dateObj.getTime())) return value; // Handle invalid date strings
-                      const hours = dateObj.getHours();
-                      const minutes = dateObj.getMinutes();
-                      const roundedMinutes = Math.floor(minutes / 15) * 15;
                       const year = dateObj.getFullYear();
                       const month = String(dateObj.getMonth() + 1).padStart(2, '0');
                       const day = String(dateObj.getDate()).padStart(2, '0');
-                      const hour = String(hours).padStart(2, '0');
-                      const minute = String(roundedMinutes).padStart(2, '0');
+                      const hour = String(dateObj.getHours()).padStart(2, '0');
+                      const minute = String(dateObj.getMinutes()).padStart(2, '0');
                       return `${year}-${month}-${day} ${hour}:${minute}`;
                     }}
                   />
