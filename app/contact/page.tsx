@@ -50,7 +50,7 @@ export default function Contact() {
    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
-    console.log(formState)
+    //console.log(formState)
     try {
       const response = await fetch('/api/contact', {
         method: 'POST',
@@ -64,7 +64,7 @@ export default function Contact() {
         const errorData = await response.json();
       } else {
         const data = await response.json();
-        console.log('Success:', data);
+        //console.log('Success:', data);
         setIsSubmitted(true);
         setFormState({
           name: '',

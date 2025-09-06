@@ -27,6 +27,11 @@ const machineSchema = new mongoose.Schema({
     required:true,
     enum:["pravaah","tarang","drishti","doordrishti"]
   },
+  depth:{
+    type:String,
+    required:true,
+    default:'10.18'
+  }
 })
 
 const UserSchema = new mongoose.Schema({

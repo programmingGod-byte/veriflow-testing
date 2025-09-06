@@ -5,13 +5,43 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
+
+const allowedOrigins = ['https://visiflow-tech.vercel.app/'];
+const allowedIps = ['127.0.0.1']; // Add your specific IPs
+
+/**
+ * Middleware to check if the request comes from an allowed IP or Origin.
+ */
+const securityCheck = (req, res, next) => {
+  const origin = req.get('Origin');
+  const ip = req.ip;
+
+  console.log(`Request from IP: ${ip}, Origin: ${origin}`); // For debugging
+
+  // Allow the request if the IP or Origin is in our whitelist
+  if (allowedOrigins.includes(origin) || allowedIps.includes(ip)) {
+    next(); // It's a valid source, proceed to the next middleware/route handler
+  } else {
+    // If not in the whitelist, block the request
+    res.status(403).json({ error: 'Forbidden: Access denied.' });
+  }
+};
+
 const app = express();
 
 // Use cors middleware to remove CORS errors
 app.use(cors());
 
+// IMPORTANT: Enable Express to trust the proxy to get the correct IP
+// This is crucial if your app is behind a load balancer or reverse proxy (like Nginx)
+app.set('trust proxy', 1);
+
+// <<< ADD THIS LINE TO APPLY THE SECURITY CHECK >>>
+app.use(securityCheck);
+
 // Serve static files from /home/ec2-user
 app.use(express.static('/home/ec2-user'));
+
 
 // Enable directory listing with icons (only if no index.html exists)
 app.use(serveIndex('/home/ec2-user', { icons: true }));

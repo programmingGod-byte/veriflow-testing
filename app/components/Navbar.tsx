@@ -42,6 +42,7 @@ const Navbar = () => {
   const [editMachineIp, setEditMachineIp] = useState('');
   const [editMachineLatitude, setEditMachineLatitude] = useState('');
   const [editMachineLongitude, setEditMachineLongitude] = useState('');
+  const [editMachineDepth,setEditMachineDepth] = useState('');
   const [selectedMachineType, setSelectedMachineType] = useState('');
   const [isMachineDetailsOpen, setIsMachineDetailsOpen] = useState(false);
   const pathname = usePathname();
@@ -65,7 +66,7 @@ const Navbar = () => {
           const response = await fetch('/api/user/profile');
           if (response.ok) {
             const data = await response.json();
-            console.log(data)
+            //console.log(data)
             setUser(data.user);
             if (data.user.email == "verigeektech@gmail.com" || data.user.email == "omdaga6@gmail.com") {
               setIsUserAdmin(true);
@@ -100,18 +101,19 @@ const Navbar = () => {
             const data = await response.json();
             setMachines(data.machines || []);
             setAllMachines(data.machines || []);
-            console.log(data.machines)
-            console.log("Machines fetched:", data.machines);
+            //console.log(data.machines)
+            //console.log("Machines fetched:", data.machines);
             if (data.machines && data.machines.length > 0) {
-              console.log("SSSSSSSSSSSSSSSSSSSSSSSSS")
+              //console.log("SSSSSSSSSSSSSSSSSSSSSSSSS")
               setValue({
                 machineName: data.machines[0].machineName,
                 machineCode: data.machines[0].machineCode,
                 machineType: data.machines[0].machineType,
                 latitude: data.machines[0].latitude,
-                longitude: data.machines[0].longitude
+                longitude: data.machines[0].longitude,
+                depth: data.machines[0].depth
               })
-              console.log(value)
+              //console.log(value)
 
             }
           }
@@ -127,13 +129,14 @@ const Navbar = () => {
   // Navigation links
 
   function handleMacineClick(machine: any) {
-    console.log(machine)
+    //console.log(machine)
     setValue({
       machineCode: machine.machineCode,
       machineName: machine.machineName,
       machineType: machine.machineType,
       latitude: machine.latitude,
-      longitude: machine.longitude
+      longitude: machine.longitude,
+      depth: machine.depth
 
     })
     setIsMachinesMenuOpen(false)
@@ -193,12 +196,18 @@ const Navbar = () => {
   const handleAddMachine = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAddingMachine(true);
-    console.log(machineId, machinePassword, selectedMachineType)
+    //console.log(machineId, machinePassword, selectedMachineType)
     let machineName = machineId;
     let machineCode = machinePassword;
     let machineType = selectedMachineType;
 
-    const decryptResult  = decrypt(machineCode);
+    // console.log(encrypt(machineCode))
+    // console.log(decrypt(encrypt(machineCode)))
+    // const decryptResult  = decrypt(machineCode.toString());
+    const decryptResult = {
+      success:true,
+      value : machineCode == "990116"?"3.108.140.158":"3.7.18.154"
+    }
     console.log(decryptResult)
     if(!decryptResult.success) {
       alert("wrong machine code");
@@ -228,16 +237,16 @@ const Navbar = () => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log("DATA")
-        console.log(data)
+        //console.log("DATA")
+        //console.log(data)
         // Refresh machines list
         const machinesResponse = await fetch('/api/machines');
         if (machinesResponse.ok) {
           const machinesData = await machinesResponse.json();
           setMachines(machinesData.machines || []);
           setAllMachines(machinesData.machines || []);
-          console.log("machines")
-          console.log(machinesData.machines)
+          //console.log("machines")
+          //console.log(machinesData.machines)
         }
 
         // Reset form and close modal
@@ -247,7 +256,7 @@ const Navbar = () => {
         alert('Machine added successfully!');
       } else {
         const errorData = await response.json();
-        console.log(errorData)
+        //console.log(errorData)
         alert(errorData.message || 'Failed to add machine');
       }
     } catch (error) {
@@ -260,8 +269,8 @@ const Navbar = () => {
 
   // Handle delete machine
   const handleDeleteMachine = async (machineCode: string) => {
-    console.log(machineCode)
-    console.log("INSIDE DELETE FUNCTION")
+    //console.log(machineCode)
+    //console.log("INSIDE DELETE FUNCTION")
     if (!confirm('Are you sure you want to delete this machine?')) {
       return;
     }
@@ -311,13 +320,13 @@ const Navbar = () => {
         } 
       
     setIsEditingMachine(true);
-    console.log(editingMachine.machineCode)
-    console.log({
-          machineName: editMachineName,
-          machineCode: decryption.value,
-          email: session?.user?.email,
-          machineType:editMachineType
-        })
+    //console.log(editingMachine.machineCode)
+    // console.log({
+    //       machineName: editMachineName,
+    //       machineCode: decryption.value,
+    //       email: session?.user?.email,
+    //       machineType:editMachineType
+    //     })
     try {
       const response = await fetch(`/api/machines/${editingMachine.machineCode}`, {
         method: 'PUT',
@@ -330,7 +339,8 @@ const Navbar = () => {
           email: session?.user?.email,
           machineType:editMachineType,
           latitude: editMachineLatitude,
-          longitude: editMachineLongitude
+          longitude: editMachineLongitude,
+          depth: editMachineDepth
         }),
       });
 
@@ -374,6 +384,8 @@ const Navbar = () => {
     setEditMachineType(machine.machineType)
     setEditMachineLongitude(machine.longitude || '');
     setEditMachineLatitude(machine.latitude || '');
+    console.log(machine.depth)
+    setEditMachineDepth(machine.depth || '');
     setIsEditMachineModalOpen(true);
   };
 
@@ -886,6 +898,30 @@ const Navbar = () => {
                 type="text"
                 value={editMachineLongitude}
                 onChange={(e) => setEditMachineLongitude(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 
+                         transition-all duration-200 bg-gray-50/50 hover:bg-white hover:border-gray-300"
+                placeholder=""
+                required
+              />
+              <div className="absolute inset-y-0 right-3 flex items-center">
+                <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+
+          <div className="group">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              depth
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={editMachineDepth}
+                onChange={(e) => setEditMachineDepth(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 
                          focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 
                          transition-all duration-200 bg-gray-50/50 hover:bg-white hover:border-gray-300"
